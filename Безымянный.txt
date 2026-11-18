@@ -1,0 +1,2240 @@
+```html
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LAB-DYNAMICS // ГИДРАВЛИЧЕСКИЙ ПРЕСС 1000T OMEGA-EDITION</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        body {
+            background-color: #020409;
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+        }
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .lab-bg {
+            background: radial-gradient(circle at 50% 38%, #0c1d33 0%, #040710 64%, #020307 100%);
+        }
+
+        /* Custom Sci-Fi Sliders */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            background: rgba(15, 23, 42, 0.95);
+            border-radius: 999px;
+            outline: none;
+            border: 1px solid rgba(56, 189, 248, 0.28);
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #f59e0b;
+            border: 2px solid #04070f;
+            box-shadow: 0 0 14px rgba(245, 158, 11, 0.95);
+            cursor: pointer;
+            transition: transform 0.1s ease, background-color 0.1s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:active {
+            transform: scale(1.25);
+            background: #fef3c7;
+        }
+        input[type="range"].cyan-slider::-webkit-slider-thumb {
+            background: #38bdf8;
+            box-shadow: 0 0 14px rgba(56, 189, 248, 0.95);
+        }
+
+        /* Hyper-Glassmorphic Panels */
+        .hyper-panel {
+            background: rgba(6, 10, 19, 0.82);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(56, 189, 248, 0.22);
+            box-shadow: 0 12px 42px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        .chroma-flash {
+            animation: chromaPulse 0.48s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        @keyframes chromaPulse {
+            0% { filter: drop-shadow(-5px 0 0 rgba(255,0,85,0.85)) drop-shadow(5px 0 0 rgba(0,240,255,0.85)) brightness(1.22); }
+            100% { filter: drop-shadow(0 0 0 rgba(255,0,85,0)) drop-shadow(0 0 0 rgba(0,240,255,0)) brightness(1); }
+        }
+
+        .slowmo-vignette {
+            box-shadow: inset 0 0 70px rgba(56, 189, 248, 0.32);
+        }
+
+        #canvas-container {
+            touch-action: none;
+            cursor: grab;
+        }
+        #canvas-container:active {
+            cursor: grabbing;
+        }
+    </style>
+</head>
+<body class="lab-bg flex flex-col justify-between select-none">
+
+    <!-- Top Telemetry, Mode Toggle & Camera HUD -->
+    <header class="w-full px-3 pt-2.5 pb-1 sm:px-5 sm:pt-3 flex flex-col gap-1.5 z-20 pointer-events-none">
+        <!-- Row 1: Brand + Game Mode Switch + Camera Presets -->
+        <div class="flex flex-wrap items-center justify-between gap-1.5">
+            <div class="flex items-center gap-2 pointer-events-auto">
+                <div id="status-led" class="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_#fbbf24] animate-pulse"></div>
+                <div>
+                    <h1 class="text-[11px] sm:text-sm font-extrabold tracking-wider text-sky-400 uppercase leading-none flex items-center gap-1.5">
+                        <span>LAB-DYNAMICS</span>
+                        <span class="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[9px] font-bold">1000T OMEGA</span>
+                    </h1>
+                    <p class="text-[8.5px] text-slate-400 tracking-widest uppercase mt-0.5 hidden md:block">
+                        PMREM HDRI • СОПРОМАТ ФОН МИЗЕСА • BULLET-TIME ФИЗИКА
+                    </p>
+                </div>
+            </div>
+
+            <!-- Game Mode Toggle: Sandbox vs Contracts -->
+            <div class="flex rounded-xl hyper-panel overflow-hidden p-0.5 pointer-events-auto">
+                <button id="mode-sandbox" class="px-2.5 py-1 rounded-lg bg-sky-500/30 text-sky-200 text-[9.5px] font-extrabold uppercase transition">
+                    🧪 ПЕСОЧНИЦА
+                </button>
+                <button id="mode-contracts" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-amber-200 text-[9.5px] font-extrabold uppercase transition flex items-center gap-1">
+                    <span>🎯 ИСПЫТАНИЯ</span>
+                    <span id="score-badge" class="px-1 rounded bg-amber-500/25 text-amber-300 mono text-[8.5px]">0</span>
+                </button>
+            </div>
+
+            <!-- 4 Camera Presets -->
+            <div class="flex rounded-xl hyper-panel overflow-hidden p-0.5 pointer-events-auto">
+                <button data-cam="orbit" class="cam-btn px-2 py-1 rounded-lg bg-sky-500/30 text-sky-200 text-[9px] font-bold uppercase transition">3D ОБЗОР</button>
+                <button data-cam="macro" class="cam-btn px-2 py-1 rounded-lg text-slate-400 hover:text-slate-200 text-[9px] font-bold uppercase transition">МАКРО</button>
+                <button data-cam="side" class="cam-btn px-2 py-1 rounded-lg text-slate-400 hover:text-slate-200 text-[9px] font-bold uppercase transition">СБОКУ</button>
+                <button data-cam="top" class="cam-btn px-2 py-1 rounded-lg text-slate-400 hover:text-slate-200 text-[9px] font-bold uppercase transition">СВЕРХУ</button>
+            </div>
+        </div>
+
+        <!-- Row 2: 5-Metric Telemetry Strip + Dual-Trace Oscilloscope -->
+        <div class="grid grid-cols-5 sm:flex sm:items-center sm:justify-between gap-1.5 sm:gap-3 hyper-panel rounded-xl px-2.5 py-1.5 sm:px-3.5 sm:py-1.5">
+            <div class="flex flex-col">
+                <span class="text-[7.5px] sm:text-[9px] font-semibold tracking-wider text-slate-400 uppercase">УСИЛИЕ</span>
+                <span id="force-readout" class="mono text-[11px] sm:text-sm font-bold text-amber-400 leading-tight">0.0 <span class="text-[8px] font-normal text-slate-400">т</span></span>
+            </div>
+
+            <div class="flex flex-col">
+                <span class="text-[7.5px] sm:text-[9px] font-semibold tracking-wider text-slate-400 uppercase">ДАВЛЕНИЕ</span>
+                <span id="pressure-readout" class="mono text-[11px] sm:text-sm font-bold text-sky-400 leading-tight">0 <span class="text-[8px] font-normal text-slate-400">МПа</span></span>
+            </div>
+
+            <div class="flex flex-col">
+                <span class="text-[7.5px] sm:text-[9px] font-semibold tracking-wider text-slate-400 uppercase">ДЕФОРМ.</span>
+                <span id="deform-readout" class="mono text-[11px] sm:text-sm font-bold text-rose-400 leading-tight">0%</span>
+            </div>
+
+            <div class="flex flex-col">
+                <span class="text-[7.5px] sm:text-[9px] font-semibold tracking-wider text-slate-400 uppercase">ТЕМПЕР.</span>
+                <span id="temp-readout" class="mono text-[11px] sm:text-sm font-bold text-orange-400 leading-tight">24 <span class="text-[8px] font-normal text-slate-400">°C</span></span>
+            </div>
+
+            <div class="flex flex-col items-end justify-center">
+                <span class="text-[7px] sm:text-[8px] font-semibold tracking-wider text-slate-400 uppercase mb-0.5">СИЛА • ТЕМП.</span>
+                <canvas id="stress-graph" width="96" height="22" class="w-full max-w-[96px] h-[22px] rounded bg-slate-950/90 border border-slate-800/80"></canvas>
+            </div>
+        </div>
+
+        <!-- Row 3: Contract Challenge Bar (Visible in ИСПЫТАНИЯ mode) -->
+        <div id="contract-bar" class="hidden hyper-panel rounded-xl px-3 py-2 border-amber-400/40 flex flex-col gap-1.5 pointer-events-auto">
+            <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span id="contract-level-pill" class="px-1.5 py-0.5 rounded bg-amber-500/25 border border-amber-400/50 text-amber-300 mono text-[9px] font-extrabold shrink-0">КОНТРАКТ 1/5</span>
+                    <span id="contract-title" class="text-[11px] sm:text-xs font-bold text-white truncate">Ювелирный контроль</span>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <span id="contract-timer" class="mono text-[10px] font-bold text-sky-300">25.0с</span>
+                    <span id="contract-combo" class="mono text-[9.5px] font-extrabold text-emerald-400">x1.0</span>
+                    <button id="btn-skip-contract" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[9px] font-bold text-slate-300 uppercase">ПРОПУСК</button>
+                </div>
+            </div>
+            <p id="contract-desc" class="text-[10px] text-slate-300 leading-snug">Сожми Неон-гель ровно до 62% (±3%) и удерживай 2.5 секунды, не лопнув его.</p>
+            <div class="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                <div id="contract-progress" class="h-full bg-gradient-to-r from-amber-500 via-emerald-400 to-cyan-400 w-0 transition-all duration-100"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main 3D Interactive Viewport -->
+    <main id="viewport-wrap" class="relative flex-1 w-full h-full flex items-center justify-center overflow-hidden">
+        <div id="canvas-container" class="w-full h-full absolute inset-0"></div>
+
+        <!-- Status / Gesture Pill -->
+        <div id="drag-hint" class="absolute top-2 left-1/2 -translate-x-1/2 z-10 pointer-events-none transition-opacity duration-500 w-max max-w-[94vw]">
+            <div class="px-3 py-1 rounded-full bg-slate-950/85 border border-sky-500/35 text-[10px] sm:text-[11px] text-sky-200 flex items-center gap-2 shadow-xl backdrop-blur-md">
+                <span id="hint-dot" class="inline-block w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                <span id="hint-text">Зажми «ДАВИТЬ» или тяни шток • Тап по образцу — лазерный импульс</span>
+            </div>
+        </div>
+
+        <!-- Slow-Mo Indicator Badge -->
+        <div id="slowmo-badge" class="hidden absolute top-10 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+            <div class="px-3 py-0.5 rounded-full bg-cyan-950/90 border border-cyan-400/70 text-cyan-200 mono text-[10px] font-extrabold tracking-widest uppercase shadow-[0_0_20px_rgba(34,211,238,0.6)] animate-pulse">
+                ⏱️ BULLET-TIME 0.25X
+            </div>
+        </div>
+
+        <!-- Contract Victory / Fail Toast -->
+        <div id="contract-toast" class="hidden absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
+            <div id="toast-box" class="px-5 py-3 rounded-2xl bg-slate-950/92 border-2 border-emerald-400 text-center shadow-[0_0_40px_rgba(16,185,129,0.65)] backdrop-blur-xl">
+                <div id="toast-title" class="text-sm sm:text-base font-extrabold text-emerald-300 uppercase tracking-wider">КОНТРАКТ ВЫПОЛНЕН!</div>
+                <div id="toast-sub" class="mono text-xs text-white mt-1">+500 ОЧКОВ • ПЕРЕХОД К СЛЕДУЮЩЕМУ</div>
+            </div>
+        </div>
+
+        <!-- Respawn Specimen Floating Action Button -->
+        <div id="respawn-banner" class="hidden absolute bottom-3 left-1/2 -translate-x-1/2 z-20">
+            <button id="btn-respawn" class="px-4 py-2 rounded-full bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 active:scale-95 border border-emerald-300/60 text-white text-xs font-extrabold tracking-wider uppercase shadow-[0_0_25px_rgba(16,185,129,0.65)] flex items-center gap-2 transition">
+                <span>🔄 НОВЫЙ ОБРАЗЕЦ</span>
+            </button>
+        </div>
+    </main>
+
+    <!-- Bottom Collapsible Control Dock -->
+    <footer class="w-full px-3 pb-3 pt-1 sm:px-5 sm:pb-4 z-20 flex flex-col items-center pointer-events-none">
+        <div class="hyper-panel rounded-2xl p-2.5 sm:p-3.5 w-full max-w-[600px] pointer-events-auto">
+            
+            <!-- Primary Hydraulic Action Controls (Always Accessible) -->
+            <div class="grid grid-cols-6 gap-1.5 mb-2">
+                <button id="btn-press" class="col-span-2 py-2.5 px-2 rounded-xl bg-gradient-to-r from-amber-600/70 via-orange-600/70 to-rose-600/70 hover:from-amber-500/85 hover:to-rose-500/85 active:scale-95 border border-amber-400/75 text-[10px] sm:text-xs font-extrabold tracking-wider text-amber-100 uppercase transition shadow-[0_0_18px_rgba(245,158,11,0.35)] flex items-center justify-center gap-1">
+                    <span>⬇️ ДАВИТЬ</span>
+                </button>
+                <button id="btn-slam" class="py-2.5 px-1 rounded-xl bg-rose-950/95 hover:bg-rose-900 active:scale-95 border border-rose-500/60 text-[9px] sm:text-[10px] font-extrabold tracking-wider text-rose-200 uppercase transition">
+                    💥 1000T
+                </button>
+                <button id="btn-release" class="py-2.5 px-1 rounded-xl bg-sky-950/95 hover:bg-sky-900 active:scale-95 border border-sky-400/50 text-[9px] sm:text-[10px] font-extrabold tracking-wider text-sky-200 uppercase transition">
+                    ⬆️ СБРОС
+                </button>
+                <button id="btn-slowmo" class="py-2.5 px-1 rounded-xl bg-cyan-950/90 hover:bg-cyan-900 active:scale-95 border border-cyan-500/50 text-[9px] sm:text-[10px] font-bold tracking-wider text-cyan-200 uppercase transition">
+                    ⏱️ SLO-MO
+                </button>
+                <button id="btn-sound" class="py-2.5 px-1 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 border border-slate-600/50 text-[9px] sm:text-[10px] font-bold tracking-wider text-slate-300 uppercase transition">
+                    ЗВУК: ВЫКЛ
+                </button>
+            </div>
+
+            <!-- Tabs + Quick Reset + Collapse Toggle -->
+            <div class="flex items-center justify-between gap-1.5 mb-2">
+                <div class="grid grid-cols-4 gap-1 flex-1 bg-slate-950/85 p-1 rounded-xl border border-slate-800/90">
+                    <button data-tab="specimens" class="tab-btn py-1 rounded-lg bg-amber-500/25 text-amber-300 text-[9px] sm:text-[9.5px] font-bold tracking-wider uppercase transition">ОБРАЗЦЫ</button>
+                    <button data-tab="dies" class="tab-btn py-1 rounded-lg text-slate-400 hover:text-slate-200 text-[9px] sm:text-[9.5px] font-bold tracking-wider uppercase transition">НАСАДКИ</button>
+                    <button data-tab="hydraulics" class="tab-btn py-1 rounded-lg text-slate-400 hover:text-slate-200 text-[9px] sm:text-[9.5px] font-bold tracking-wider uppercase transition">НАСОС</button>
+                    <button data-tab="visual" class="tab-btn py-1 rounded-lg text-slate-400 hover:text-slate-200 text-[9px] sm:text-[9.5px] font-bold tracking-wider uppercase transition">РЕЖИМ</button>
+                </div>
+                <button id="btn-quick-new" title="Новый образец" class="px-2.5 py-1.5 rounded-xl bg-emerald-950/85 border border-emerald-500/45 text-emerald-300 text-[9.5px] font-bold uppercase active:scale-95 transition">
+                    🔄 НОВЫЙ
+                </button>
+                <button id="btn-collapse" title="Свернуть/развернуть панель" class="px-2.5 py-1.5 rounded-xl bg-slate-900/90 border border-slate-700/70 text-slate-300 text-[10px] font-bold active:scale-95 transition">
+                    ▼
+                </button>
+            </div>
+
+            <!-- Tab Panels Container -->
+            <div id="tab-panels" class="transition-all duration-200 max-h-[34vh] overflow-y-auto pr-0.5">
+                
+                <!-- TAB 1: 8 UNIQUE SPECIMENS -->
+                <div id="panel-specimens" class="grid grid-cols-4 gap-1.5">
+                    <button data-spec="0" class="spec-btn py-1.5 px-1 rounded-xl bg-sky-500/25 border border-sky-400/60 text-[8.5px] sm:text-[9px] font-bold tracking-wider text-sky-200 uppercase transition truncate">
+                        КРИО-СТЕКЛО
+                    </button>
+                    <button data-spec="1" class="spec-btn py-1.5 px-1 rounded-xl bg-slate-900/80 border border-slate-700/70 text-[8.5px] sm:text-[9px] font-bold tracking-wider text-slate-400 uppercase transition truncate">
+                        ТИТАН ТРУБА
+                    </button>
+                    <button data-spec="2" class="spec-btn py-1.5 px-1 rounded-xl bg-slate-900/80 border border-slate-700/70 text-[8.5px] sm:text-[9px] font-bold tracking-wider text-slate-400 uppercase transition truncate">
+                        НЕОН-ГЕЛЬ
+                    </button>
+                    <button data-spec="3" class="spec-btn py-1.5 px-1 rounded-xl bg-slate-900/80 border border-slate-700/70 text-[8.5px] sm:text-[9px] font-bold tracking-wider text-slate-400 uppercase transition truncate">
+                        БЕТОН БЛОК
+                    </button>
+                    <button data-spec="4" class="spec-btn py-1.5 px-1 rounded-xl bg-slate-900/80 border border-slate-700/70 text-[8.5px] sm:text-[9px] font-bold tracking-wider text-slate-400 uppercase transition truncate">
+                        ПЛАЗМА-ЯДРО
+                    </button>
+                    <button data-spec="5" class="spec-btn py-1.5 px-1 rounded-xl bg-slate-900/80 border border-slate-700/70 text-[8.5px] sm:text-[9px] font-bold tracking-wider text-slate-400 uppercase transition truncate">
+                        СЭНДВИЧ-БРОНЯ
+                    </button>
+                    <button data-spec="6" class="spec-btn py-1.5 px-1 rounded-xl bg-slate-900/80 border border-slate-700/70 text-[8.5px] sm:text-[9px] font-bold tracking-wider text-slate-400 uppercase transition truncate">
+                        КОНДЕНСАТОР
+                    </button>
+                    <button data-spec="7" class="spec-btn py-1.5 px-1 rounded-xl bg-slate-900/80 border border-slate-700/70 text-[8.5px] sm:text-[9px] font-bold tracking-wider text-slate-400 uppercase transition truncate">
+                        СЛИТОК 1000T
+                    </button>
+                </div>
+
+                <!-- TAB 2: 3 INTERCHANGEABLE CRUSHER DIES -->
+                <div id="panel-dies" class="hidden grid grid-cols-3 gap-1.5">
+                    <button data-die="flat" class="die-btn py-2 px-2 rounded-xl bg-amber-500/25 border border-amber-400/60 text-[9.5px] font-bold tracking-wider text-amber-200 uppercase transition">
+                        ⬛ ПЛОСКАЯ ПЛИТА
+                    </button>
+                    <button data-die="wedge" class="die-btn py-2 px-2 rounded-xl bg-slate-900/80 border border-slate-700/70 text-[9.5px] font-bold tracking-wider text-slate-400 uppercase transition">
+                        🔻 КЛИНОВОЙ КОЛУН
+                    </button>
+                    <button data-die="spikes" class="die-btn py-2 px-2 rounded-xl bg-slate-900/80 border border-slate-700/70 text-[9.5px] font-bold tracking-wider text-slate-400 uppercase transition">
+                        🔱 ИГОЛЬЧАТАЯ МАТРИЦА
+                    </button>
+                </div>
+
+                <!-- TAB 3: HYDRAULIC PUMP & RELIEF LIMIT -->
+                <div id="panel-hydraulics" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label for="speed-slider" class="text-[9.5px] font-semibold tracking-wider text-slate-300 uppercase">СКОРОСТЬ ПОДАЧИ</label>
+                            <span id="speed-val" class="mono text-[10.5px] font-bold text-sky-400">65%</span>
+                        </div>
+                        <input id="speed-slider" class="cyan-slider" type="range" min="10" max="100" value="65" step="5">
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label for="limit-slider" class="text-[9.5px] font-semibold tracking-wider text-slate-300 uppercase">КЛАПАН ДАВЛЕНИЯ</label>
+                            <span id="limit-val" class="mono text-[10.5px] font-bold text-amber-400">1000 ТОНН</span>
+                        </div>
+                        <input id="limit-slider" type="range" min="50" max="1000" value="1000" step="25">
+                    </div>
+                </div>
+
+                <!-- TAB 4: VISUALIZATION MODES -->
+                <div id="panel-visual" class="hidden grid grid-cols-3 gap-1.5 pt-0.5">
+                    <button data-vis="studio" class="vis-btn py-2 px-2 rounded-lg bg-sky-500/25 border border-sky-400/50 text-[9.5px] font-bold tracking-wider text-sky-200 uppercase transition">
+                        СТУДИЯ PBR
+                    </button>
+                    <button data-vis="thermal" class="vis-btn py-2 px-2 rounded-lg bg-slate-900/80 border border-slate-700/70 text-[9.5px] font-bold tracking-wider text-slate-400 uppercase transition">
+                        ТЕПЛОВИЗОР
+                    </button>
+                    <button data-vis="xray" class="vis-btn py-2 px-2 rounded-lg bg-slate-900/80 border border-slate-700/70 text-[9.5px] font-bold tracking-wider text-slate-400 uppercase transition">
+                        РЕНТГЕН / РАЗРЕЗ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        /**
+         * LAB-DYNAMICS // ГИДРАВЛИЧЕСКИЙ ПРЕСС 1000T OMEGA-EDITION
+         * 4-Column Hydraulic Frame + Pulsating Pressure Hoses + 3 Interchangeable Crusher Dies
+         * + 8 Material Profiles + 5 Contract Challenges + Bullet-Time Slow-Mo + Multi-Layer Audio
+         */
+        (function () {
+            // --- 8 Physically Distinct Specimen Profiles ---
+            const SPECIMENS = [
+                {
+                    id: 'glass',
+                    name: 'КРИО-СТЕКЛО',
+                    behavior: 'brittle',
+                    restHeight: 1.46,
+                    restRadius: 0.56,
+                    stiffnessTons: 460,
+                    fractureStrain: 0.22,
+                    bucklingWaves: 0,
+                    color: 0x7dd3fc,
+                    emissive: 0x0284c7,
+                    emissiveInt: 0.35,
+                    roughness: 0.05,
+                    metalness: 0.08,
+                    transmission: 0.74,
+                    ior: 1.56,
+                    shardColor: 0xbae6fd,
+                    sparkColor: 0xe0f2fe,
+                    btnClass: 'bg-sky-500/25 border-sky-400/60 text-sky-200',
+                    ledClass: 'bg-sky-400 shadow-[0_0_12px_#38bdf8]'
+                },
+                {
+                    id: 'titanium',
+                    name: 'ТИТАНОВАЯ ТРУБА',
+                    behavior: 'ductile',
+                    restHeight: 1.58,
+                    restRadius: 0.54,
+                    stiffnessTons: 620,
+                    fractureStrain: 0.85,
+                    bucklingWaves: 5.0,
+                    color: 0xcbd5e1,
+                    emissive: 0x334155,
+                    emissiveInt: 0.25,
+                    roughness: 0.20,
+                    metalness: 0.94,
+                    transmission: 0.0,
+                    ior: 2.1,
+                    shardColor: 0xfbbf24,
+                    sparkColor: 0xfb923c,
+                    btnClass: 'bg-slate-400/25 border-slate-300/60 text-slate-100',
+                    ledClass: 'bg-slate-300 shadow-[0_0_12px_#cbd5e1]'
+                },
+                {
+                    id: 'gel',
+                    name: 'НЕОН-ГЕЛЬ',
+                    behavior: 'hyperelastic',
+                    restHeight: 1.38,
+                    restRadius: 0.62,
+                    stiffnessTons: 155,
+                    fractureStrain: 0.92,
+                    bucklingWaves: 0,
+                    color: 0x34d399,
+                    emissive: 0x059669,
+                    emissiveInt: 0.58,
+                    roughness: 0.11,
+                    metalness: 0.04,
+                    transmission: 0.48,
+                    ior: 1.44,
+                    shardColor: 0x6ee7b7,
+                    sparkColor: 0x34d399,
+                    btnClass: 'bg-emerald-500/25 border-emerald-400/60 text-emerald-200',
+                    ledClass: 'bg-emerald-400 shadow-[0_0_12px_#34d399]'
+                },
+                {
+                    id: 'concrete',
+                    name: 'БЕТОННЫЙ БЛОК',
+                    behavior: 'crumble',
+                    restHeight: 1.44,
+                    restRadius: 0.64,
+                    stiffnessTons: 540,
+                    fractureStrain: 0.38,
+                    bucklingWaves: 2.0,
+                    color: 0x94a3b8,
+                    emissive: 0x1e293b,
+                    emissiveInt: 0.15,
+                    roughness: 0.88,
+                    metalness: 0.04,
+                    transmission: 0.0,
+                    ior: 1.5,
+                    shardColor: 0x64748b,
+                    sparkColor: 0xd97706,
+                    btnClass: 'bg-amber-500/25 border-amber-400/60 text-amber-200',
+                    ledClass: 'bg-amber-400 shadow-[0_0_12px_#fbbf24]'
+                },
+                {
+                    id: 'plasma',
+                    name: 'ПЛАЗМА-ЯДРО',
+                    behavior: 'explosive',
+                    restHeight: 1.34,
+                    restRadius: 0.56,
+                    stiffnessTons: 680,
+                    fractureStrain: 0.90,
+                    bucklingWaves: 0,
+                    color: 0xe879f9,
+                    emissive: 0xa21caf,
+                    emissiveInt: 0.88,
+                    roughness: 0.14,
+                    metalness: 0.35,
+                    transmission: 0.52,
+                    ior: 1.65,
+                    shardColor: 0xf0abfc,
+                    sparkColor: 0x38bdf8,
+                    btnClass: 'bg-fuchsia-500/25 border-fuchsia-400/60 text-fuchsia-200',
+                    ledClass: 'bg-fuchsia-400 shadow-[0_0_12px_#e879f9]'
+                },
+                {
+                    id: 'sandwich',
+                    name: 'СЭНДВИЧ-БРОНЯ',
+                    behavior: 'composite',
+                    restHeight: 1.52,
+                    restRadius: 0.60,
+                    stiffnessTons: 740,
+                    fractureStrain: 0.68,
+                    bucklingWaves: 3.0,
+                    color: 0x38bdf8,
+                    emissive: 0x1d4ed8,
+                    emissiveInt: 0.42,
+                    roughness: 0.25,
+                    metalness: 0.76,
+                    transmission: 0.12,
+                    ior: 1.85,
+                    shardColor: 0x38bdf8,
+                    sparkColor: 0xfbbf24,
+                    btnClass: 'bg-blue-500/25 border-blue-400/60 text-blue-200',
+                    ledClass: 'bg-blue-400 shadow-[0_0_12px_#60a5fa]'
+                },
+                {
+                    id: 'capacitor',
+                    name: 'КОНДЕНСАТОР',
+                    behavior: 'electric',
+                    restHeight: 1.50,
+                    restRadius: 0.52,
+                    stiffnessTons: 380,
+                    fractureStrain: 0.34,
+                    bucklingWaves: 1.5,
+                    color: 0x22d3ee,
+                    emissive: 0x0891b2,
+                    emissiveInt: 0.65,
+                    roughness: 0.08,
+                    metalness: 0.22,
+                    transmission: 0.68,
+                    ior: 1.54,
+                    shardColor: 0x67e8f9,
+                    sparkColor: 0xfef08a,
+                    btnClass: 'bg-cyan-500/25 border-cyan-400/60 text-cyan-200',
+                    ledClass: 'bg-cyan-400 shadow-[0_0_12px_#22d3ee]'
+                },
+                {
+                    id: 'ingot',
+                    name: 'СЛИТОК 1000T',
+                    behavior: 'superalloy',
+                    restHeight: 1.36,
+                    restRadius: 0.62,
+                    stiffnessTons: 980,
+                    fractureStrain: 0.78,
+                    bucklingWaves: 1.0,
+                    color: 0xfbbf24,
+                    emissive: 0xb45309,
+                    emissiveInt: 0.38,
+                    roughness: 0.16,
+                    metalness: 0.96,
+                    transmission: 0.0,
+                    ior: 2.3,
+                    shardColor: 0xfde047,
+                    sparkColor: 0xf97316,
+                    btnClass: 'bg-yellow-500/25 border-yellow-400/60 text-yellow-200',
+                    ledClass: 'bg-yellow-400 shadow-[0_0_12px_#facc15]'
+                }
+            ];
+
+            // --- 5 Contract Challenges ---
+            const CONTRACTS = [
+                {
+                    id: 1,
+                    title: 'Ювелирный контроль',
+                    desc: 'Сожми Неон-гель ровно до 62% (±3%) и удерживай 2.5 секунды, не лопнув его.',
+                    specIndex: 2,
+                    die: 'flat',
+                    timeLimit: 28
+                },
+                {
+                    id: 2,
+                    title: 'Контролируемый снос',
+                    desc: 'Раздави Бетонный блок так, чтобы пиковое усилие не превысило 320 т (плавная подача!).',
+                    specIndex: 3,
+                    die: 'flat',
+                    timeLimit: 25
+                },
+                {
+                    id: 3,
+                    title: 'Шоковый удар',
+                    desc: 'Расколи Крио-стекло в режиме «💥 1000T» (Ударный таран) одним импульсом.',
+                    specIndex: 0,
+                    die: 'wedge',
+                    timeLimit: 18
+                },
+                {
+                    id: 4,
+                    title: 'Удержание ядра',
+                    desc: 'Доведи Плазма-ядро до критического резонанса (82%–89%), затем мгновенно нажми «⬆️ СБРОС» до взрыва!',
+                    specIndex: 4,
+                    die: 'flat',
+                    timeLimit: 25
+                },
+                {
+                    id: 5,
+                    title: 'Гидравлический марафон',
+                    desc: 'Раздави 3 образца подряд на время любым способом!',
+                    specIndex: 1,
+                    die: 'spikes',
+                    timeLimit: 32
+                }
+            ];
+
+            // --- Rig Geometry Constants ---
+            const ANVIL_TOP_Y = -1.25;
+            const MAX_PLATEN_Y = 0.88;
+            const MIN_PLATEN_Y = ANVIL_TOP_Y + 0.06;
+
+            // --- Simulation State ---
+            const state = {
+                gameMode: 'sandbox',       // 'sandbox' | 'contracts'
+                contractIdx: 0,
+                contractTimer: 28,
+                contractHoldTime: 0,
+                contractPeakForce: 0,
+                contractArmed: false,
+                marathonCrushes: 0,
+                score: 0,
+                combo: 1.0,
+
+                specIndex: 0,
+                dieType: 'flat',           // 'flat' | 'wedge' | 'spikes'
+                platenY: MAX_PLATEN_Y,
+                platenVy: 0,
+                plasticStrain: 0,
+                elasticStrain: 0,
+                totalStrain: 0,
+                dentDepth: 0,              // Local laser/hammer tap dent
+                forceTons: 0,
+                pressureMpa: 0,
+                temperatureC: 24,
+                maxLimitTons: 1000,
+                pumpSpeedPct: 65,
+                isPressing: false,
+                isReleasing: false,
+                slamActive: false,
+                usedSlamThisAttempt: false,
+                destroyed: false,
+
+                manualSlowMo: false,
+                autoSlowMoTimer: 0,
+                timeScale: 1.0,
+
+                visMode: 'studio',         // 'studio' | 'thermal' | 'xray'
+                camMode: 'orbit',          // 'orbit' | 'macro' | 'side' | 'top'
+                dragMode: 'none',          // 'platen' | 'camera' | 'pinch' | 'none'
+                lastPointerX: 0,
+                lastPointerY: 0,
+                pinchStartDist: 0,
+                pinchStartZoom: 6.6,
+                cameraShake: 0,
+                time: 0,
+                soundEnabled: false,
+                panelCollapsed: false,
+                lastHapticTime: 0
+            };
+
+            const camOrbit = {
+                theta: 0.44,
+                phi: 0.16,
+                radius: 6.6,
+                targetTheta: 0.44,
+                targetPhi: 0.16,
+                targetRadius: 6.6,
+                lookY: -0.22,
+                targetLookY: -0.22
+            };
+
+            // --- DOM References ---
+            const container = document.getElementById('canvas-container');
+            const viewportWrap = document.getElementById('viewport-wrap');
+            const forceReadout = document.getElementById('force-readout');
+            const pressureReadout = document.getElementById('pressure-readout');
+            const deformReadout = document.getElementById('deform-readout');
+            const tempReadout = document.getElementById('temp-readout');
+            const statusLed = document.getElementById('status-led');
+            const dragHint = document.getElementById('drag-hint');
+            const hintText = document.getElementById('hint-text');
+            const slowmoBadge = document.getElementById('slowmo-badge');
+            const respawnBanner = document.getElementById('respawn-banner');
+
+            const modeSandboxBtn = document.getElementById('mode-sandbox');
+            const modeContractsBtn = document.getElementById('mode-contracts');
+            const scoreBadge = document.getElementById('score-badge');
+            const contractBar = document.getElementById('contract-bar');
+            const contractLevelPill = document.getElementById('contract-level-pill');
+            const contractTitle = document.getElementById('contract-title');
+            const contractDesc = document.getElementById('contract-desc');
+            const contractTimerEl = document.getElementById('contract-timer');
+            const contractComboEl = document.getElementById('contract-combo');
+            const contractProgressEl = document.getElementById('contract-progress');
+            const btnSkipContract = document.getElementById('btn-skip-contract');
+            const contractToast = document.getElementById('contract-toast');
+            const toastBox = document.getElementById('toast-box');
+            const toastTitle = document.getElementById('toast-title');
+            const toastSub = document.getElementById('toast-sub');
+
+            const btnPress = document.getElementById('btn-press');
+            const btnSlam = document.getElementById('btn-slam');
+            const btnRelease = document.getElementById('btn-release');
+            const btnSlowMo = document.getElementById('btn-slowmo');
+            const btnSound = document.getElementById('btn-sound');
+            const btnRespawn = document.getElementById('btn-respawn');
+            const btnQuickNew = document.getElementById('btn-quick-new');
+            const btnCollapse = document.getElementById('btn-collapse');
+            const tabPanels = document.getElementById('tab-panels');
+
+            const speedSlider = document.getElementById('speed-slider');
+            const limitSlider = document.getElementById('limit-slider');
+            const speedVal = document.getElementById('speed-val');
+            const limitVal = document.getElementById('limit-val');
+
+            const graphCanvas = document.getElementById('stress-graph');
+            const graphCtx = graphCanvas.getContext('2d');
+            const curvePoints = [];
+
+            // --- Multi-Layer Hydraulic & Destruction Web Audio Synthesizer ---
+            let audioCtx = null;
+            let pumpOsc = null;
+            let valveOsc = null;
+            let pumpFilter = null;
+            let pumpGain = null;
+
+            function initAudio() {
+                if (audioCtx) return;
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+
+                audioCtx = new AudioCtx();
+                pumpOsc = audioCtx.createOscillator();
+                valveOsc = audioCtx.createOscillator();
+                pumpFilter = audioCtx.createBiquadFilter();
+                pumpGain = audioCtx.createGain();
+
+                pumpOsc.type = 'sawtooth';
+                pumpOsc.frequency.value = 54;
+
+                valveOsc.type = 'triangle';
+                valveOsc.frequency.value = 320;
+
+                pumpFilter.type = 'lowpass';
+                pumpFilter.frequency.value = 180;
+                pumpFilter.Q.value = 5.0;
+
+                pumpGain.gain.value = 0;
+
+                pumpOsc.connect(pumpFilter);
+                valveOsc.connect(pumpFilter);
+                pumpFilter.connect(pumpGain);
+                pumpGain.connect(audioCtx.destination);
+
+                pumpOsc.start();
+                valveOsc.start();
+            }
+
+            function triggerDestructionSound(behavior) {
+                if (!state.soundEnabled || !audioCtx) return;
+                try {
+                    const now = audioCtx.currentTime;
+                    const bufferSize = audioCtx.sampleRate * 0.55;
+                    const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                    const output = noiseBuffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) {
+                        output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (audioCtx.sampleRate * 0.14));
+                    }
+                    const whiteNoise = audioCtx.createBufferSource();
+                    whiteNoise.buffer = noiseBuffer;
+
+                    const filter = audioCtx.createBiquadFilter();
+                    filter.type = (behavior === 'brittle' || behavior === 'electric') ? 'highpass' : 'lowpass';
+                    filter.frequency.value = (behavior === 'brittle' || behavior === 'electric') ? 1900 : 460;
+
+                    const nGain = audioCtx.createGain();
+                    nGain.gain.setValueAtTime(0.38, now);
+                    nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.54);
+
+                    whiteNoise.connect(filter);
+                    filter.connect(nGain);
+                    nGain.connect(audioCtx.destination);
+                    whiteNoise.start(now);
+
+                    // Sub-bass shockwave boom
+                    const sub = audioCtx.createOscillator();
+                    const subGain = audioCtx.createGain();
+                    sub.type = 'sine';
+                    sub.frequency.setValueAtTime(125, now);
+                    sub.frequency.exponentialRampToValueAtTime(24, now + 0.45);
+                    subGain.gain.setValueAtTime(0.36, now);
+                    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.46);
+                    sub.connect(subGain);
+                    subGain.connect(audioCtx.destination);
+                    sub.start(now);
+                    sub.stop(now + 0.47);
+                } catch (e) {}
+            }
+
+            function triggerLaserPulseSound() {
+                if (!state.soundEnabled || !audioCtx) return;
+                try {
+                    const now = audioCtx.currentTime;
+                    const osc = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(760, now);
+                    osc.frequency.exponentialRampToValueAtTime(95, now + 0.16);
+                    g.gain.setValueAtTime(0.18, now);
+                    g.gain.exponentialRampToValueAtTime(0.001, now + 0.17);
+                    osc.connect(g);
+                    g.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.18);
+                } catch (e) {}
+            }
+
+            function updateHydraulicAudio(isMoving, loadNorm, timeScale) {
+                if (!state.soundEnabled || !audioCtx || !pumpGain) return;
+                const now = audioCtx.currentTime;
+                if (isMoving) {
+                    pumpGain.gain.setTargetAtTime(0.06 + loadNorm * 0.06, now, 0.04);
+                    pumpOsc.frequency.setTargetAtTime((48 + loadNorm * 85 + state.pumpSpeedPct * 0.25) * (0.4 + 0.6 * timeScale), now, 0.05);
+                    valveOsc.frequency.setTargetAtTime((280 + loadNorm * 720) * (0.4 + 0.6 * timeScale), now, 0.05);
+                    pumpFilter.frequency.setTargetAtTime(160 + loadNorm * 680, now, 0.05);
+                } else {
+                    pumpGain.gain.setTargetAtTime(0, now, 0.04);
+                }
+            }
+
+            btnSound.addEventListener('click', () => {
+                initAudio();
+                if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+                state.soundEnabled = !state.soundEnabled;
+                if (state.soundEnabled) {
+                    btnSound.textContent = 'ЗВУК: ВКЛ';
+                    btnSound.classList.add('border-emerald-400/60', 'text-emerald-200', 'bg-emerald-950/90');
+                } else {
+                    btnSound.textContent = 'ЗВУК: ВЫКЛ';
+                    btnSound.classList.remove('border-emerald-400/60', 'text-emerald-200', 'bg-emerald-950/90');
+                    if (pumpGain && audioCtx) pumpGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.03);
+                }
+            });
+
+            // --- Three.js Scene, Renderer & Procedural Studio HDRI ---
+            const scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x020409, 0.032);
+
+            const camera = new THREE.PerspectiveCamera(
+                40,
+                container.clientWidth / Math.max(1, container.clientHeight),
+                0.1,
+                100
+            );
+
+            const renderer = new THREE.WebGLRenderer({
+                antialias: true,
+                alpha: true,
+                powerPreference: 'high-performance'
+            });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.26;
+            container.appendChild(renderer.domElement);
+
+            function buildStudioEnvironment() {
+                const pmremGenerator = new THREE.PMREMGenerator(renderer);
+                pmremGenerator.compileEquirectangularShader();
+
+                const envScene = new THREE.Scene();
+                envScene.background = new THREE.Color(0x040814);
+
+                const topBox = new THREE.Mesh(
+                    new THREE.PlaneGeometry(16, 7),
+                    new THREE.MeshBasicMaterial({ color: 0xf0f9ff, side: THREE.DoubleSide })
+                );
+                topBox.position.set(0, 7, 0);
+                topBox.rotation.x = Math.PI / 2;
+                envScene.add(topBox);
+
+                const leftStrip = new THREE.Mesh(
+                    new THREE.PlaneGeometry(12, 2.5),
+                    new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide })
+                );
+                leftStrip.position.set(-6, 2.5, -4);
+                leftStrip.lookAt(0, 0, 0);
+                envScene.add(leftStrip);
+
+                const rightStrip = new THREE.Mesh(
+                    new THREE.PlaneGeometry(12, 2.5),
+                    new THREE.MeshBasicMaterial({ color: 0xf59e0b, side: THREE.DoubleSide })
+                );
+                rightStrip.position.set(6, 2.0, 4);
+                rightStrip.lookAt(0, 0, 0);
+                envScene.add(rightStrip);
+
+                const envRT = pmremGenerator.fromScene(envScene, 0.04);
+                scene.environment = envRT.texture;
+                pmremGenerator.dispose();
+            }
+            buildStudioEnvironment();
+
+            // Studio Lights
+            scene.add(new THREE.AmbientLight(0x1e293b, 1.2));
+
+            const keyLight = new THREE.DirectionalLight(0xffffff, 1.55);
+            keyLight.position.set(3.8, 6.8, 4.8);
+            scene.add(keyLight);
+
+            const rimLight = new THREE.DirectionalLight(0x38bdf8, 1.3);
+            rimLight.position.set(-4.8, 3.2, -4.2);
+            scene.add(rimLight);
+
+            const stressPointLight = new THREE.PointLight(0xf59e0b, 1.5, 6.5);
+            stressPointLight.position.set(0, -0.4, 0.9);
+            scene.add(stressPointLight);
+
+            // Reflective Lab Floor & Cyber Grid
+            const floorGeo = new THREE.PlaneGeometry(30, 30);
+            floorGeo.rotateX(-Math.PI / 2);
+            const floorMesh = new THREE.Mesh(
+                floorGeo,
+                new THREE.MeshStandardMaterial({ color: 0x040812, roughness: 0.2, metalness: 0.8 })
+            );
+            floorMesh.position.y = -1.85;
+            scene.add(floorMesh);
+
+            const gridHelper = new THREE.GridHelper(22, 44, 0x1d4ed8, 0x0f172a);
+            gridHelper.position.y = -1.84;
+            gridHelper.material.transparent = true;
+            gridHelper.material.opacity = 0.48;
+            scene.add(gridHelper);
+
+            // Expanding Floor Shockwave Ring (for explosions & 1000T slams)
+            const shockRingGeo = new THREE.RingGeometry(0.4, 0.65, 64);
+            shockRingGeo.rotateX(-Math.PI / 2);
+            const shockRingMat = new THREE.MeshBasicMaterial({
+                color: 0x38bdf8,
+                transparent: true,
+                opacity: 0,
+                side: THREE.DoubleSide,
+                blending: THREE.AdditiveBlending
+            });
+            const shockRingMesh = new THREE.Mesh(shockRingGeo, shockRingMat);
+            shockRingMesh.position.y = -1.82;
+            scene.add(shockRingMesh);
+            let shockwaveProgress = 0;
+
+            function triggerFloorShockwave(colorHex) {
+                shockRingMat.color.setHex(colorHex);
+                shockwaveProgress = 0.01;
+            }
+
+            // --- Build 4-Column Heavy Industrial Hydraulic Press Rig ---
+            const rigGroup = new THREE.Group();
+            scene.add(rigGroup);
+
+            const frameSteelMat = new THREE.MeshStandardMaterial({
+                color: 0x1e293b,
+                roughness: 0.32,
+                metalness: 0.84
+            });
+            const chromeMat = new THREE.MeshStandardMaterial({
+                color: 0xf8fafc,
+                roughness: 0.09,
+                metalness: 0.96
+            });
+            const anvilMat = new THREE.MeshStandardMaterial({
+                color: 0x334155,
+                roughness: 0.26,
+                metalness: 0.88
+            });
+
+            // Procedural Hazard Stripes Texture
+            function createHazardTexture() {
+                const c = document.createElement('canvas');
+                c.width = 256;
+                c.height = 64;
+                const ctx = c.getContext('2d');
+                ctx.fillStyle = '#f59e0b';
+                ctx.fillRect(0, 0, 256, 64);
+                ctx.fillStyle = '#0f172a';
+                for (let x = -64; x < 320; x += 32) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x + 16, 0);
+                    ctx.lineTo(x - 16, 64);
+                    ctx.lineTo(x - 32, 64);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                const tex = new THREE.CanvasTexture(c);
+                tex.wrapS = THREE.RepeatWrapping;
+                tex.wrapT = THREE.RepeatWrapping;
+                tex.repeat.set(3, 1);
+                return tex;
+            }
+            const hazardMat = new THREE.MeshStandardMaterial({
+                map: createHazardTexture(),
+                roughness: 0.34,
+                metalness: 0.42
+            });
+
+            // Base Pedestal & Lower Anvil Platen
+            const basePedestal = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.45, 2.6), frameSteelMat);
+            basePedestal.position.y = -1.62;
+            rigGroup.add(basePedestal);
+
+            const lowerAnvil = new THREE.Mesh(new THREE.CylinderGeometry(1.08, 1.16, 0.24, 48), anvilMat);
+            lowerAnvil.position.y = ANVIL_TOP_Y - 0.12;
+            rigGroup.add(lowerAnvil);
+
+            // Glowing Calibration Ring on Anvil
+            const anvilRing = new THREE.Mesh(
+                new THREE.TorusGeometry(0.95, 0.015, 16, 64),
+                new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+            );
+            anvilRing.rotation.x = Math.PI / 2;
+            anvilRing.position.y = ANVIL_TOP_Y + 0.002;
+            rigGroup.add(anvilRing);
+
+            // 4 Heavy Chrome Guide Columns
+            const colCoords = [
+                [-1.35, -0.82],
+                [1.35, -0.82],
+                [-1.35, 0.82],
+                [1.35, 0.82]
+            ];
+            colCoords.forEach(([cx, cz]) => {
+                const col = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.095, 3.7, 20), chromeMat);
+                col.position.set(cx, 0.25, cz);
+                rigGroup.add(col);
+
+                const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.135, 0.135, 0.35, 20), frameSteelMat);
+                collar.position.set(cx, -1.25, cz);
+                rigGroup.add(collar);
+            });
+
+            // Top Hydraulic Crown + Dual Pressure Gauges + Main Cylinder
+            const topCrown = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.48, 2.4), frameSteelMat);
+            topCrown.position.y = 2.18;
+            rigGroup.add(topCrown);
+
+            const mainCylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.50, 0.50, 1.2, 36), frameSteelMat);
+            mainCylinder.position.y = 2.92;
+            rigGroup.add(mainCylinder);
+
+            // Dual Glowing Pressure Gauges on Crown Front
+            [-0.78, 0.78].forEach((gx, idx) => {
+                const gaugeBody = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.08, 24), chromeMat);
+                gaugeBody.rotation.x = Math.PI / 2;
+                gaugeBody.position.set(gx, 2.18, 1.22);
+                rigGroup.add(gaugeBody);
+
+                const gaugeFace = new THREE.Mesh(
+                    new THREE.CircleGeometry(0.15, 24),
+                    new THREE.MeshBasicMaterial({ color: idx === 0 ? 0x38bdf8 : 0xf59e0b })
+                );
+                gaugeFace.position.set(gx, 2.18, 1.265);
+                rigGroup.add(gaugeFace);
+            });
+
+            // Pulsating Hydraulic Pressure Hoses (Curve Tubes that glow under pressure!)
+            const hoseMat = new THREE.MeshStandardMaterial({
+                color: 0x0f172a,
+                emissive: 0x0284c7,
+                emissiveIntensity: 0.35,
+                roughness: 0.35,
+                metalness: 0.6
+            });
+            [-1, 1].forEach((side) => {
+                const curve = new THREE.CatmullRomCurve3([
+                    new THREE.Vector3(side * 1.55, -1.45, -0.45),
+                    new THREE.Vector3(side * 1.88, 0.2, -0.55),
+                    new THREE.Vector3(side * 1.65, 2.35, -0.35),
+                    new THREE.Vector3(side * 0.45, 3.15, 0)
+                ]);
+                const hoseGeo = new THREE.TubeGeometry(curve, 32, 0.055, 12, false);
+                const hoseMesh = new THREE.Mesh(hoseGeo, hoseMat);
+                rigGroup.add(hoseMesh);
+            });
+
+            // --- Moving Upper Hydraulic Piston & Interchangeable Crusher Dies ---
+            const movingPlatenGroup = new THREE.Group();
+            movingPlatenGroup.position.y = state.platenY;
+            scene.add(movingPlatenGroup);
+
+            const pistonRod = new THREE.Mesh(new THREE.CylinderGeometry(0.30, 0.30, 2.45, 32), chromeMat);
+            pistonRod.position.y = 1.35;
+            movingPlatenGroup.add(pistonRod);
+
+            const crosshead = new THREE.Mesh(new THREE.BoxGeometry(3.05, 0.24, 1.92), frameSteelMat);
+            crosshead.position.y = 0.28;
+            movingPlatenGroup.add(crosshead);
+
+            const crusherHead = new THREE.Mesh(new THREE.CylinderGeometry(0.98, 0.98, 0.18, 48), hazardMat);
+            crusherHead.position.y = 0.09;
+            movingPlatenGroup.add(crusherHead);
+
+            // Die 1: Flat Hardened Plate
+            const dieFlatMesh = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.05, 48), anvilMat);
+            dieFlatMesh.position.y = 0.025;
+            movingPlatenGroup.add(dieFlatMesh);
+
+            // Die 2: V-Wedge Splitter Blade
+            const dieWedgeGroup = new THREE.Group();
+            const wedgeGeo = new THREE.CylinderGeometry(0.02, 0.34, 1.85, 3);
+            wedgeGeo.rotateZ(Math.PI / 2);
+            wedgeGeo.rotateX(Math.PI);
+            const wedgeBlade = new THREE.Mesh(wedgeGeo, chromeMat);
+            wedgeBlade.position.y = -0.14;
+            dieWedgeGroup.add(wedgeBlade);
+            dieWedgeGroup.visible = false;
+            movingPlatenGroup.add(dieWedgeGroup);
+
+            // Die 3: Spike Matrix (13 Tungsten Needles)
+            const dieSpikesGroup = new THREE.Group();
+            const spikeGeo = new THREE.ConeGeometry(0.055, 0.30, 12);
+            spikeGeo.rotateX(Math.PI);
+            const spikeOffsets = [
+                [0, 0],
+                [-0.32, 0], [0.32, 0], [0, -0.32], [0, 0.32],
+                [-0.24, -0.24], [0.24, -0.24], [-0.24, 0.24], [0.24, 0.24],
+                [-0.56, 0], [0.56, 0], [0, -0.56], [0, 0.56]
+            ];
+            spikeOffsets.forEach(([sx, sz]) => {
+                const sp = new THREE.Mesh(spikeGeo, chromeMat);
+                sp.position.set(sx, -0.14, sz);
+                dieSpikesGroup.add(sp);
+            });
+            dieSpikesGroup.visible = false;
+            movingPlatenGroup.add(dieSpikesGroup);
+
+            // Touch Hitbox on Moving Platen
+            const pressHitBox = new THREE.Mesh(
+                new THREE.CylinderGeometry(1.35, 1.35, 0.75, 16),
+                new THREE.MeshBasicMaterial({ visible: false })
+            );
+            pressHitBox.position.y = 0.2;
+            movingPlatenGroup.add(pressHitBox);
+
+            // --- Deformable Continuum Specimen Mesh (64 x 64 Nodes) ---
+            const RADIAL_SEGS = 64;
+            const HEIGHT_SEGS = 64;
+            const specGeo = new THREE.CylinderGeometry(1, 1, 1, RADIAL_SEGS, HEIGHT_SEGS, false);
+            const specPos = specGeo.attributes.position;
+            const specVertCount = specPos.count;
+            const baseNormY = new Float32Array(specVertCount);
+            const baseAngle = new Float32Array(specVertCount);
+            const baseRadRatio = new Float32Array(specVertCount);
+            const specColors = new Float32Array(specVertCount * 3);
+
+            for (let i = 0; i < specVertCount; i++) {
+                const vx = specPos.getX(i);
+                const vy = specPos.getY(i);
+                const vz = specPos.getZ(i);
+                baseNormY[i] = vy;
+                baseAngle[i] = Math.atan2(vz, vx);
+                baseRadRatio[i] = Math.hypot(vx, vz) > 0.001 ? 1.0 : 0.0;
+                specColors[i * 3] = 0.2;
+                specColors[i * 3 + 1] = 0.8;
+                specColors[i * 3 + 2] = 1.0;
+            }
+            specGeo.setAttribute('color', new THREE.BufferAttribute(specColors, 3));
+
+            const specMaterial = new THREE.MeshPhysicalMaterial({
+                color: SPECIMENS[0].color,
+                emissive: SPECIMENS[0].emissive,
+                emissiveIntensity: SPECIMENS[0].emissiveInt,
+                roughness: SPECIMENS[0].roughness,
+                metalness: SPECIMENS[0].metalness,
+                clearcoat: 0.92,
+                clearcoatRoughness: 0.09,
+                transmission: SPECIMENS[0].transmission,
+                thickness: 1.25,
+                ior: SPECIMENS[0].ior,
+                transparent: true,
+                opacity: 0.95,
+                envMapIntensity: 1.45,
+                vertexColors: false
+            });
+
+            const specimenMesh = new THREE.Mesh(specGeo, specMaterial);
+            scene.add(specimenMesh);
+
+            const wireMat = new THREE.MeshBasicMaterial({
+                color: 0x38bdf8,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.03
+            });
+            const specimenWire = new THREE.Mesh(specGeo, wireMat);
+            scene.add(specimenWire);
+
+            // Internal Glowing Core & Orbiting Magnetic Rings (for Plasma Core & Capacitor)
+            const innerCoreMesh = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.18, 0.18, 1.0, 24, 16),
+                new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.35 })
+            );
+            scene.add(innerCoreMesh);
+
+            const gyroGroup = new THREE.Group();
+            const gyroRing1 = new THREE.Mesh(
+                new THREE.TorusGeometry(0.68, 0.018, 12, 48),
+                new THREE.MeshBasicMaterial({ color: 0xf0abfc, transparent: true, opacity: 0.75 })
+            );
+            const gyroRing2 = new THREE.Mesh(
+                new THREE.TorusGeometry(0.74, 0.014, 12, 48),
+                new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.65 })
+            );
+            gyroRing2.rotation.x = Math.PI / 3;
+            gyroGroup.add(gyroRing1);
+            gyroGroup.add(gyroRing2);
+            gyroGroup.visible = false;
+            scene.add(gyroGroup);
+
+            // --- 85-Piece 3D Shatter Debris & Spark Particle System ---
+            const SHARD_COUNT = 85;
+            const shardGroup = new THREE.Group();
+            scene.add(shardGroup);
+
+            const shardGeo = new THREE.OctahedronGeometry(0.10, 0);
+            const shardMat = new THREE.MeshPhysicalMaterial({
+                color: 0xbae6fd,
+                emissive: 0x0284c7,
+                emissiveIntensity: 0.45,
+                roughness: 0.12,
+                metalness: 0.25,
+                clearcoat: 1.0
+            });
+
+            const shards = [];
+            for (let i = 0; i < SHARD_COUNT; i++) {
+                const m = new THREE.Mesh(shardGeo, shardMat);
+                m.visible = false;
+                shardGroup.add(m);
+                shards.push({
+                    mesh: m,
+                    vx: 0, vy: 0, vz: 0,
+                    rx: 0, ry: 0, rz: 0,
+                    life: 0
+                });
+            }
+
+            const PARTICLE_COUNT = 150;
+            const partGeo = new THREE.BufferGeometry();
+            const partPos = new Float32Array(PARTICLE_COUNT * 3);
+            const partVel = [];
+            const partLife = new Float32Array(PARTICLE_COUNT);
+
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                partPos[i * 3 + 1] = -99;
+                partVel.push({ vx: 0, vy: 0, vz: 0 });
+                partLife[i] = 0;
+            }
+            partGeo.setAttribute('position', new THREE.BufferAttribute(partPos, 3));
+
+            const partMat = new THREE.PointsMaterial({
+                color: 0xfbbf24,
+                size: 0.065,
+                transparent: true,
+                opacity: 0.92,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+            const particleSystem = new THREE.Points(partGeo, partMat);
+            scene.add(particleSystem);
+            let nextPartIdx = 0;
+
+            function emitParticleBurst(centerY, radius, count, speedScale, colorHex) {
+                partMat.color.setHex(colorHex);
+                for (let k = 0; k < count; k++) {
+                    const idx = nextPartIdx;
+                    nextPartIdx = (nextPartIdx + 1) % PARTICLE_COUNT;
+                    const angle = Math.random() * Math.PI * 2;
+                    const r = radius * (0.4 + Math.random() * 0.7);
+                    partPos[idx * 3] = Math.cos(angle) * r;
+                    partPos[idx * 3 + 1] = centerY + (Math.random() - 0.5) * 0.35;
+                    partPos[idx * 3 + 2] = Math.sin(angle) * r;
+
+                    const spd = (1.6 + Math.random() * 4.2) * speedScale;
+                    partVel[idx].vx = Math.cos(angle) * spd;
+                    partVel[idx].vy = (0.9 + Math.random() * 2.8) * speedScale;
+                    partVel[idx].vz = Math.sin(angle) * spd;
+                    partLife[idx] = 1.0;
+                }
+            }
+
+            function triggerSpecimenDestruction(spec, currentHeight, currentRadius) {
+                state.destroyed = true;
+                specimenMesh.visible = false;
+                specimenWire.visible = false;
+                innerCoreMesh.visible = false;
+                gyroGroup.visible = false;
+                respawnBanner.classList.remove('hidden');
+
+                // Auto Bullet-Time Slow-Mo on Destruction!
+                state.autoSlowMoTimer = 1.25;
+                state.cameraShake = 0.26;
+                triggerFloorShockwave(spec.sparkColor);
+
+                viewportWrap.classList.remove('chroma-flash');
+                void viewportWrap.offsetWidth;
+                viewportWrap.classList.add('chroma-flash');
+                triggerDestructionSound(spec.behavior);
+
+                if (navigator.vibrate) {
+                    try { navigator.vibrate([50, 30, 80]); } catch (e) {}
+                }
+
+                // Launch 85 Shards (if Wedge die is active, split outward along Z axis!)
+                shardMat.color.setHex(spec.shardColor);
+                shardMat.emissive.setHex(spec.emissive);
+                const centerY = ANVIL_TOP_Y + currentHeight * 0.5;
+
+                for (let i = 0; i < SHARD_COUNT; i++) {
+                    const s = shards[i];
+                    s.mesh.visible = true;
+                    const angle = Math.random() * Math.PI * 2;
+                    const r = Math.random() * currentRadius * 0.9;
+                    s.mesh.position.set(
+                        Math.cos(angle) * r,
+                        ANVIL_TOP_Y + Math.random() * currentHeight,
+                        Math.sin(angle) * r
+                    );
+                    const scale = 0.5 + Math.random() * 1.25;
+                    s.mesh.scale.set(scale, scale * (0.45 + Math.random() * 0.8), scale);
+
+                    const blast = spec.behavior === 'explosive' ? 6.5 : 4.0;
+                    const outSpd = (1.5 + Math.random() * blast);
+                    if (state.dieType === 'wedge') {
+                        const side = s.mesh.position.z >= 0 ? 1 : -1;
+                        s.vx = (Math.random() - 0.5) * 2.5;
+                        s.vy = 1.2 + Math.random() * 3.2;
+                        s.vz = side * (2.2 + Math.random() * 3.8);
+                    } else {
+                        s.vx = Math.cos(angle) * outSpd;
+                        s.vy = 1.0 + Math.random() * 3.6;
+                        s.vz = Math.sin(angle) * outSpd;
+                    }
+                    s.rx = (Math.random() - 0.5) * 16;
+                    s.ry = (Math.random() - 0.5) * 16;
+                    s.rz = (Math.random() - 0.5) * 16;
+                    s.life = 2.8;
+                }
+
+                emitParticleBurst(centerY, currentRadius, 95, spec.behavior === 'explosive' ? 1.75 : 1.2, spec.sparkColor);
+                hintText.textContent = `РАЗРУШЕНО ПРИ ${state.forceTons.toFixed(1)} ТОНН! Нажми «🔄 НОВЫЙ ОБРАЗЕЦ»`;
+                dragHint.style.opacity = '1';
+
+                // Check Contract Crush Events
+                if (state.gameMode === 'contracts') {
+                    onContractSpecimenDestroyed();
+                }
+            }
+
+            // --- Spawn / Reset Specimen ---
+            function spawnSpecimen(idx) {
+                state.specIndex = idx;
+                const spec = SPECIMENS[idx];
+
+                state.destroyed = false;
+                state.plasticStrain = 0;
+                state.elasticStrain = 0;
+                state.totalStrain = 0;
+                state.dentDepth = 0;
+                state.forceTons = 0;
+                state.pressureMpa = 0;
+                state.temperatureC = 24;
+                state.slamActive = false;
+                state.usedSlamThisAttempt = false;
+                curvePoints.length = 0;
+
+                state.platenY = Math.max(MAX_PLATEN_Y, ANVIL_TOP_Y + spec.restHeight + 0.36);
+                state.platenVy = 0;
+
+                specimenMesh.visible = true;
+                specimenWire.visible = true;
+                innerCoreMesh.visible = true;
+                gyroGroup.visible = (spec.id === 'plasma' || spec.id === 'capacitor');
+                respawnBanner.classList.add('hidden');
+
+                shards.forEach((s) => { s.mesh.visible = false; s.life = 0; });
+
+                specMaterial.roughness = spec.roughness;
+                specMaterial.metalness = spec.metalness;
+                specMaterial.ior = spec.ior;
+                innerCoreMesh.material.color.setHex(spec.color);
+                statusLed.className = `w-2.5 h-2.5 rounded-full animate-pulse ${spec.ledClass}`;
+
+                applyVisualizationMode(state.visMode);
+                updateSpecimenGeometry(spec, 0, 0);
+
+                // Sync Specimen Selector Buttons UI
+                const specButtons = document.querySelectorAll('.spec-btn');
+                specButtons.forEach((b, i) => {
+                    b.className = i === idx
+                        ? `spec-btn py-1.5 px-1 rounded-xl border text-[8.5px] sm:text-[9px] font-bold tracking-wider uppercase transition truncate ${spec.btnClass}`
+                        : `spec-btn py-1.5 px-1 rounded-xl bg-slate-900/80 border border-slate-700/70 text-[8.5px] sm:text-[9px] font-bold tracking-wider text-slate-400 uppercase transition truncate`;
+                });
+
+                hintText.textContent = `Образец: ${spec.name} • Зажми «ДАВИТЬ» или тяни шток`;
+                dragHint.style.opacity = '1';
+            }
+
+            function setDieType(die) {
+                state.dieType = die;
+                dieFlatMesh.visible = (die === 'flat');
+                dieWedgeGroup.visible = (die === 'wedge');
+                dieSpikesGroup.visible = (die === 'spikes');
+
+                const dieButtons = document.querySelectorAll('.die-btn');
+                dieButtons.forEach((b) => {
+                    const active = b.getAttribute('data-die') === die;
+                    b.className = active
+                        ? 'die-btn py-2 px-2 rounded-xl bg-amber-500/25 border border-amber-400/60 text-[9.5px] font-bold tracking-wider text-amber-200 uppercase transition'
+                        : 'die-btn py-2 px-2 rounded-xl bg-slate-900/80 border border-slate-700/70 text-[9.5px] font-bold tracking-wider text-slate-400 uppercase transition';
+                });
+            }
+
+            // --- Update Deformed Specimen Vertices (Affected by Die Geometry & Dent!) ---
+            function updateSpecimenGeometry(spec, strain, loadNorm) {
+                const currentHeight = Math.max(0.08, spec.restHeight * (1.0 - strain));
+                const centerY = ANVIL_TOP_Y + currentHeight * 0.5;
+                const volumeBulge = 1.0 / Math.sqrt(Math.max(0.18, 1.0 - strain * 0.85));
+
+                const positions = specGeo.attributes.position;
+                const colors = specGeo.attributes.color;
+                const isThermal = state.visMode === 'thermal';
+
+                for (let i = 0; i < specVertCount; i++) {
+                    const ny = baseNormY[i]; // -0.5 to +0.5
+                    const angle = baseAngle[i];
+                    const radRatio = baseRadRatio[i];
+
+                    let y = centerY + ny * currentHeight;
+                    let r = 0;
+
+                    if (radRatio > 0.5) {
+                        const endPinch = Math.cos(ny * Math.PI);
+                        let localRadius = spec.restRadius * (1.0 + (volumeBulge - 1.0) * (0.24 + 0.76 * endPinch));
+
+                        if (spec.bucklingWaves > 0 && strain > 0.04) {
+                            const wave = Math.sin((ny + 0.5) * Math.PI * spec.bucklingWaves * 2.0);
+                            localRadius += wave * spec.restRadius * strain * 0.34 * endPinch;
+                        }
+
+                        // Local laser/hammer tap dent around equator
+                        if (state.dentDepth > 0.001) {
+                            const eqFactor = Math.exp(-Math.pow(ny * 4.5, 2));
+                            const angFactor = Math.max(0, Math.cos(angle - 0.5));
+                            localRadius -= state.dentDepth * eqFactor * Math.pow(angFactor, 3);
+                        }
+
+                        // Die-specific top deformation!
+                        if (ny > 0.15 && strain > 0.02) {
+                            const topWeight = (ny - 0.15) / 0.35;
+                            if (state.dieType === 'wedge') {
+                                // V-wedge splits along X axis (z ~ 0)
+                                const zNorm = Math.abs(Math.sin(angle));
+                                y -= (1.0 - zNorm) * strain * 0.35 * topWeight;
+                                localRadius += zNorm * strain * 0.18 * topWeight;
+                            } else if (state.dieType === 'spikes') {
+                                // Spike matrix ripples the top crown
+                                const spikeRipple = Math.abs(Math.sin(angle * 4.0));
+                                y -= spikeRipple * strain * 0.26 * topWeight;
+                            }
+                        }
+
+                        if (loadNorm > 0.78 && (spec.behavior === 'brittle' || spec.behavior === 'explosive')) {
+                            localRadius += (Math.random() - 0.5) * 0.016 * loadNorm;
+                        }
+
+                        r = Math.max(0.05, localRadius);
+                    } else if (ny > 0 && strain > 0.02) {
+                        // Top cap center indented by Wedge or Spikes
+                        if (state.dieType === 'wedge' || state.dieType === 'spikes') {
+                            y -= strain * 0.28;
+                        }
+                    }
+
+                    positions.setXYZ(i, Math.cos(angle) * r, y, Math.sin(angle) * r);
+
+                    // Von Mises Thermal Heatmap
+                    if (isThermal) {
+                        let concentration = 0.72 + 0.28 * Math.abs(ny * 2);
+                        if (state.dieType === 'wedge') {
+                            concentration *= (1.35 - 0.45 * Math.abs(Math.sin(angle)));
+                        } else if (state.dieType === 'spikes') {
+                            concentration *= (1.25 - 0.35 * Math.abs(Math.sin(angle * 4)));
+                        }
+                        const s = Math.min(1.0, loadNorm * concentration);
+                        let cr, cg, cb;
+                        if (s < 0.33) {
+                            const t = s / 0.33;
+                            cr = 0.05; cg = 0.35 + 0.6 * t; cb = 0.98 - 0.45 * t;
+                        } else if (s < 0.66) {
+                            const t = (s - 0.33) / 0.33;
+                            cr = 0.05 + 0.93 * t; cg = 0.95; cb = 0.53 - 0.48 * t;
+                        } else {
+                            const t = (s - 0.66) / 0.34;
+                            cr = 1.0; cg = 0.95 - 0.85 * t; cb = 0.05;
+                        }
+                        colors.setXYZ(i, cr, cg, cb);
+                    }
+                }
+
+                positions.needsUpdate = true;
+                if (isThermal) colors.needsUpdate = true;
+                specGeo.computeVertexNormals();
+
+                innerCoreMesh.position.y = centerY;
+                innerCoreMesh.scale.set(1 + strain * 0.6, currentHeight, 1 + strain * 0.6);
+
+                if (gyroGroup.visible) {
+                    gyroGroup.position.y = centerY;
+                    const gScale = 1.0 + strain * 0.45;
+                    gyroGroup.scale.set(gScale, 1.0 - strain * 0.55, gScale);
+                    gyroRing1.rotation.y += 0.04 * (1 + loadNorm * 4);
+                    gyroRing1.rotation.z += 0.025 * (1 + loadNorm * 4);
+                    gyroRing2.rotation.y -= 0.05 * (1 + loadNorm * 4);
+                }
+            }
+
+            // --- Contract Challenge Logic ---
+            function showToast(title, sub, isSuccess) {
+                toastTitle.textContent = title;
+                toastSub.textContent = sub;
+                toastBox.className = isSuccess
+                    ? 'px-5 py-3 rounded-2xl bg-slate-950/92 border-2 border-emerald-400 text-center shadow-[0_0_40px_rgba(16,185,129,0.7)] backdrop-blur-xl'
+                    : 'px-5 py-3 rounded-2xl bg-slate-950/92 border-2 border-rose-500 text-center shadow-[0_0_40px_rgba(244,63,94,0.7)] backdrop-blur-xl';
+                toastTitle.className = isSuccess
+                    ? 'text-sm sm:text-base font-extrabold text-emerald-300 uppercase tracking-wider'
+                    : 'text-sm sm:text-base font-extrabold text-rose-400 uppercase tracking-wider';
+
+                contractToast.classList.remove('hidden');
+                setTimeout(() => contractToast.classList.add('hidden'), 2200);
+            }
+
+            function loadContract(idx) {
+                state.contractIdx = idx % CONTRACTS.length;
+                const c = CONTRACTS[state.contractIdx];
+                state.contractTimer = c.timeLimit;
+                state.contractHoldTime = 0;
+                state.contractPeakForce = 0;
+                state.contractArmed = false;
+                state.marathonCrushes = 0;
+
+                contractLevelPill.textContent = `КОНТРАКТ ${state.contractIdx + 1}/${CONTRACTS.length}`;
+                contractTitle.textContent = c.title;
+                contractDesc.textContent = c.desc;
+                contractProgressEl.style.width = '0%';
+
+                setDieType(c.die);
+                spawnSpecimen(c.specIndex);
+            }
+
+            function completeCurrentContract() {
+                const earned = Math.round(500 * state.combo);
+                state.score += earned;
+                state.combo = Math.min(3.0, +(state.combo + 0.25).toFixed(2));
+                scoreBadge.textContent = state.score;
+                contractComboEl.textContent = `x${state.combo.toFixed(1)}`;
+                showToast('КОНТРАКТ ВЫПОЛНЕН!', `+${earned} ОЧКОВ • СЛЕДУЮЩЕЕ ИСПЫТАНИЕ`, true);
+                loadContract(state.contractIdx + 1);
+            }
+
+            function failCurrentContract(reason) {
+                state.combo = 1.0;
+                contractComboEl.textContent = 'x1.0';
+                showToast('КОНТРАКТ ПРОВАЛЕН', reason, false);
+                loadContract(state.contractIdx);
+            }
+
+            function onContractSpecimenDestroyed() {
+                const c = CONTRACTS[state.contractIdx];
+                if (c.id === 1) {
+                    failCurrentContract('НЕОН-ГЕЛЬ ЛОПНУЛ! НУЖЕН ЮВЕЛИРНЫЙ КОНТРОЛЬ');
+                } else if (c.id === 2) {
+                    if (state.contractPeakForce <= 320) {
+                        completeCurrentContract();
+                    } else {
+                        failCurrentContract(`ПИК УСИЛИЯ ${Math.round(state.contractPeakForce)} т > 320 т!`);
+                    }
+                } else if (c.id === 3) {
+                    if (state.usedSlamThisAttempt) {
+                        completeCurrentContract();
+                    } else {
+                        failCurrentContract('НУЖНО БЫЛО ИСПОЛЬЗОВАТЬ УДАР «💥 1000T»!');
+                    }
+                } else if (c.id === 4) {
+                    failCurrentContract('ПЛАЗМА-ЯДРО ВЗОРВАЛОСЬ! СБРАСЫВАЙ РАНЬШЕ');
+                } else if (c.id === 5) {
+                    state.marathonCrushes++;
+                    contractProgressEl.style.width = `${(state.marathonCrushes / 3) * 100}%`;
+                    if (state.marathonCrushes >= 3) {
+                        completeCurrentContract();
+                    } else {
+                        setTimeout(() => {
+                            if (state.gameMode === 'contracts' && CONTRACTS[state.contractIdx].id === 5) {
+                                const nextSpec = (state.specIndex + 1) % 6;
+                                spawnSpecimen(nextSpec);
+                            }
+                        }, 450);
+                    }
+                }
+            }
+
+            function stepContracts(dt) {
+                if (state.gameMode !== 'contracts') return;
+                const c = CONTRACTS[state.contractIdx];
+
+                state.contractTimer -= dt;
+                contractTimerEl.textContent = `${Math.max(0, state.contractTimer).toFixed(1)}с`;
+                if (state.contractTimer <= 0) {
+                    failCurrentContract('ВРЕМЯ ИСТЕКЛО!');
+                    return;
+                }
+
+                const deformPct = state.totalStrain * 100;
+                if (state.forceTons > state.contractPeakForce) {
+                    state.contractPeakForce = state.forceTons;
+                }
+
+                if (c.id === 1 && !state.destroyed) {
+                    // Hold 62% ± 3% for 2.5s
+                    if (deformPct >= 59 && deformPct <= 65) {
+                        state.contractHoldTime += dt;
+                    } else {
+                        state.contractHoldTime = Math.max(0, state.contractHoldTime - dt * 0.8);
+                    }
+                    const pct = Math.min(100, (state.contractHoldTime / 2.5) * 100);
+                    contractProgressEl.style.width = `${pct}%`;
+                    if (state.contractHoldTime >= 2.5) {
+                        completeCurrentContract();
+                    }
+                } else if (c.id === 2 && !state.destroyed) {
+                    const pct = Math.min(100, (deformPct / 38) * 100);
+                    contractProgressEl.style.width = `${pct}%`;
+                } else if (c.id === 4 && !state.destroyed) {
+                    if (deformPct >= 82 && deformPct < 90) {
+                        state.contractArmed = true;
+                        contractProgressEl.style.width = '75%';
+                        hintText.textContent = 'КРИТИЧЕСКИЙ РЕЗОНАНС! ЖМИ «⬆️ СБРОС» ПРЯМО СЕЙЧАС!';
+                    } else if (state.contractArmed && deformPct < 45) {
+                        contractProgressEl.style.width = '100%';
+                        completeCurrentContract();
+                    }
+                }
+            }
+
+            // --- Main Physics Step ---
+            function stepPhysics(rawDt) {
+                // Slow-Mo time scaling
+                if (state.autoSlowMoTimer > 0) {
+                    state.autoSlowMoTimer = Math.max(0, state.autoSlowMoTimer - rawDt);
+                }
+                const isSlowMoActive = state.manualSlowMo || state.autoSlowMoTimer > 0;
+                const targetScale = isSlowMoActive ? 0.25 : 1.0;
+                state.timeScale += (targetScale - state.timeScale) * 0.22;
+
+                slowmoBadge.classList.toggle('hidden', !isSlowMoActive);
+                viewportWrap.classList.toggle('slowmo-vignette', isSlowMoActive);
+
+                const dt = rawDt * state.timeScale;
+                const spec = SPECIMENS[state.specIndex];
+                const speedFactor = state.pumpSpeedPct / 100;
+
+                // Platen Kinematics
+                const specimenTopRestY = ANVIL_TOP_Y + spec.restHeight * (1.0 - state.plasticStrain);
+                const inContact = !state.destroyed && (state.platenY <= specimenTopRestY + 0.005);
+
+                if (state.dragMode !== 'platen') {
+                    if (state.slamActive) {
+                        state.platenVy = -6.2;
+                        state.platenY += state.platenVy * dt;
+                        if (state.platenY <= MIN_PLATEN_Y || state.destroyed) {
+                            state.slamActive = false;
+                        }
+                    } else if (state.isPressing) {
+                        const resistanceSlowdown = inContact ? Math.max(0.25, 1.0 - (state.forceTons / 1250)) : 1.0;
+                        const targetVy = -0.95 * speedFactor * resistanceSlowdown;
+                        if (state.forceTons < state.maxLimitTons || !inContact) {
+                            state.platenVy += (targetVy - state.platenVy) * 0.26;
+                            state.platenY += state.platenVy * dt;
+                        } else {
+                            state.platenVy = 0;
+                        }
+                    } else if (state.isReleasing) {
+                        const targetVy = 1.45 * Math.max(0.6, speedFactor);
+                        state.platenVy += (targetVy - state.platenVy) * 0.26;
+                        state.platenY += state.platenVy * dt;
+                        if (state.platenY >= MAX_PLATEN_Y) {
+                            state.platenY = MAX_PLATEN_Y;
+                            state.platenVy = 0;
+                            state.isReleasing = false;
+                        }
+                    } else {
+                        if (inContact && spec.behavior === 'hyperelastic' && state.elasticStrain > 0.02) {
+                            state.platenVy = state.elasticStrain * 2.4;
+                            state.platenY += state.platenVy * dt;
+                        } else {
+                            state.platenVy *= 0.76;
+                        }
+                    }
+                }
+
+                const topLimit = Math.max(MAX_PLATEN_Y, ANVIL_TOP_Y + spec.restHeight + 0.36);
+                state.platenY = Math.max(MIN_PLATEN_Y, Math.min(topLimit, state.platenY));
+                movingPlatenGroup.position.y = state.platenY;
+
+                // Specimen Deformation & Tonnage Solver
+                if (!state.destroyed) {
+                    const currentGap = Math.max(0.08, state.platenY - ANVIL_TOP_Y);
+                    const compressedHeight = Math.min(spec.restHeight, currentGap);
+                    const rawStrain = Math.max(0, (spec.restHeight - compressedHeight) / spec.restHeight);
+
+                    if (spec.behavior === 'ductile' || spec.behavior === 'superalloy') {
+                        if (rawStrain > state.plasticStrain) state.plasticStrain = rawStrain;
+                        state.elasticStrain = Math.max(0, rawStrain - state.plasticStrain * 0.95);
+                        state.totalStrain = state.plasticStrain;
+                    } else if (spec.behavior === 'crumble' || spec.behavior === 'composite') {
+                        if (rawStrain > state.plasticStrain) state.plasticStrain = rawStrain * 0.68;
+                        state.elasticStrain = Math.max(0, rawStrain - state.plasticStrain);
+                        state.totalStrain = Math.max(rawStrain, state.plasticStrain);
+                    } else {
+                        state.plasticStrain = 0;
+                        state.elasticStrain = rawStrain;
+                        state.totalStrain = rawStrain;
+                    }
+
+                    // Die concentration factor (Wedge & Spikes concentrate stress!)
+                    const dieMultiplier = state.dieType === 'flat' ? 1.0 : (state.dieType === 'wedge' ? 1.38 : 1.25);
+
+                    if (inContact && rawStrain > 0.002) {
+                        const activeStrain = (spec.behavior === 'ductile' || spec.behavior === 'superalloy')
+                            ? Math.max(0.02, rawStrain - state.plasticStrain * 0.85 + state.plasticStrain * 0.38)
+                            : rawStrain;
+
+                        let nonLinearFactor = 1.0 + Math.pow(rawStrain, 2.1) * 2.3;
+                        // Sandwich composite gives 3 distinct load spikes!
+                        if (spec.behavior === 'composite') {
+                            nonLinearFactor += Math.sin(rawStrain * Math.PI * 5) * 0.25;
+                        }
+                        const computedForce = activeStrain * spec.stiffnessTons * nonLinearFactor * (state.dieType === 'flat' ? 1.0 : 0.82);
+                        state.forceTons = Math.min(1000, computedForce);
+                    } else {
+                        state.forceTons *= 0.74;
+                        if (state.forceTons < 0.1) state.forceTons = 0;
+                    }
+
+                    const currentRadius = spec.restRadius / Math.sqrt(Math.max(0.2, 1.0 - state.totalStrain * 0.85));
+                    const contactAreaFactor = state.dieType === 'flat' ? 1.0 : (state.dieType === 'wedge' ? 0.25 : 0.18);
+                    const areaM2 = Math.PI * Math.pow(currentRadius * 0.15, 2) * contactAreaFactor;
+                    state.pressureMpa = (state.forceTons * 9.81 * 1000) / Math.max(0.0005, areaM2 * 1e6);
+
+                    // Thermodynamic Heating from plastic work & friction
+                    if (inContact && Math.abs(state.platenVy) > 0.03) {
+                        state.temperatureC = Math.min(980, state.temperatureC + state.forceTons * Math.abs(state.platenVy) * dt * 0.28);
+                    } else {
+                        state.temperatureC += (24 - state.temperatureC) * dt * 0.35;
+                    }
+
+                    const effectiveFractureStrain = spec.fractureStrain / dieMultiplier;
+                    const failureLoadNorm = Math.min(1.0, state.totalStrain / effectiveFractureStrain);
+
+                    // Hydraulic Hose Pulsation under High Pressure
+                    const loadNorm = Math.min(1, state.forceTons / 900);
+                    hoseMat.emissive.setHex(loadNorm > 0.7 ? 0xf43f5e : (loadNorm > 0.35 ? 0xf59e0b : 0x0284c7));
+                    hoseMat.emissiveIntensity = 0.35 + loadNorm * 1.45;
+                    if (loadNorm > 0.85) {
+                        state.cameraShake = Math.max(state.cameraShake, 0.015 * loadNorm);
+                    }
+
+                    // Friction Sparks / Dust
+                    if (inContact && Math.abs(state.platenVy) > 0.04 && failureLoadNorm > 0.4) {
+                        if (Math.random() < 0.5) {
+                            emitParticleBurst(ANVIL_TOP_Y + compressedHeight * 0.5, currentRadius, 3, 0.5, spec.sparkColor);
+                        }
+                    }
+
+                    if (state.totalStrain >= effectiveFractureStrain) {
+                        triggerSpecimenDestruction(spec, compressedHeight, currentRadius);
+                    } else {
+                        updateSpecimenGeometry(spec, state.totalStrain, failureLoadNorm);
+                    }
+
+                    if (inContact && Math.abs(state.platenVy) > 0.02) {
+                        curvePoints.push({
+                            strain: Math.min(1, state.totalStrain / 0.92),
+                            force: Math.min(1, state.forceTons / 1000),
+                            temp: Math.min(1, (state.temperatureC - 24) / 650)
+                        });
+                        if (curvePoints.length > 96) curvePoints.shift();
+                    }
+
+                    stressPointLight.intensity = 1.2 + failureLoadNorm * 3.8;
+                    stressPointLight.color.setHex(spec.color);
+
+                    if (failureLoadNorm > 0.65 && Math.abs(state.platenVy) > 0.05 && navigator.vibrate) {
+                        const nowMs = performance.now();
+                        if (nowMs - state.lastHapticTime > 120) {
+                            navigator.vibrate(12);
+                            state.lastHapticTime = nowMs;
+                        }
+                    }
+                } else {
+                    state.forceTons *= 0.82;
+                    state.pressureMpa *= 0.82;
+                    state.temperatureC += (24 - state.temperatureC) * dt * 0.5;
+                    hoseMat.emissiveIntensity = 0.35;
+                }
+
+                // Step Contracts
+                stepContracts(dt);
+
+                // Update Hydraulic Audio
+                const isMoving = Math.abs(state.platenVy) > 0.03;
+                updateHydraulicAudio(isMoving, Math.min(1, state.forceTons / 800), state.timeScale);
+
+                // Floor Shockwave Animation
+                if (shockwaveProgress > 0) {
+                    shockwaveProgress += dt * 2.4;
+                    const s = 1.0 + shockwaveProgress * 9.5;
+                    shockRingMesh.scale.set(s, s, 1);
+                    shockRingMat.opacity = Math.max(0, 0.85 * (1 - shockwaveProgress));
+                    if (shockwaveProgress >= 1.0) shockwaveProgress = 0;
+                }
+
+                // Flying 3D Shards Physics
+                for (let i = 0; i < SHARD_COUNT; i++) {
+                    const s = shards[i];
+                    if (s.life > 0) {
+                        s.life -= dt;
+                        s.vy -= 9.8 * dt;
+                        s.mesh.position.x += s.vx * dt;
+                        s.mesh.position.y += s.vy * dt;
+                        s.mesh.position.z += s.vz * dt;
+                        s.mesh.rotation.x += s.rx * dt;
+                        s.mesh.rotation.y += s.ry * dt;
+                        s.mesh.rotation.z += s.rz * dt;
+
+                        if (s.mesh.position.y < -1.78) {
+                            s.mesh.position.y = -1.78;
+                            s.vy = -s.vy * 0.35;
+                            s.vx *= 0.72;
+                            s.vz *= 0.72;
+                        }
+                        if (s.life <= 0) s.mesh.visible = false;
+                    }
+                }
+
+                // Sparks / Dust Particles
+                const pArr = partGeo.attributes.position.array;
+                for (let i = 0; i < PARTICLE_COUNT; i++) {
+                    if (partLife[i] > 0) {
+                        partLife[i] -= dt * 1.9;
+                        partVel[i].vy -= 4.5 * dt;
+                        pArr[i * 3] += partVel[i].vx * dt;
+                        pArr[i * 3 + 1] += partVel[i].vy * dt;
+                        pArr[i * 3 + 2] += partVel[i].vz * dt;
+                        if (partLife[i] <= 0) pArr[i * 3 + 1] = -99;
+                    }
+                }
+                partGeo.attributes.position.needsUpdate = true;
+            }
+
+            // --- Update Telemetry HUD & Dual-Trace Oscilloscope ---
+            function updateUI() {
+                forceReadout.innerHTML = `${state.forceTons.toFixed(1)} <span class="text-[8px] font-normal text-slate-400">т</span>`;
+                pressureReadout.innerHTML = `${Math.round(state.pressureMpa)} <span class="text-[8px] font-normal text-slate-400">МПа</span>`;
+                deformReadout.textContent = `${Math.round(state.totalStrain * 100)}%`;
+                tempReadout.innerHTML = `${Math.round(state.temperatureC)} <span class="text-[8px] font-normal text-slate-400">°C</span>`;
+
+                const w = graphCanvas.width;
+                const h = graphCanvas.height;
+                graphCtx.clearRect(0, 0, w, h);
+
+                graphCtx.strokeStyle = 'rgba(56, 189, 248, 0.16)';
+                graphCtx.lineWidth = 1;
+                graphCtx.beginPath();
+                graphCtx.moveTo(0, h * 0.5);
+                graphCtx.lineTo(w, h * 0.5);
+                graphCtx.stroke();
+
+                if (curvePoints.length > 1) {
+                    // Force-Deformation Curve (Amber)
+                    graphCtx.strokeStyle = '#fbbf24';
+                    graphCtx.lineWidth = 1.7;
+                    graphCtx.beginPath();
+                    for (let i = 0; i < curvePoints.length; i++) {
+                        const pt = curvePoints[i];
+                        const x = 2 + pt.strain * (w - 4);
+                        const y = h - 2 - pt.force * (h - 4);
+                        if (i === 0) graphCtx.moveTo(x, y);
+                        else graphCtx.lineTo(x, y);
+                    }
+                    graphCtx.stroke();
+
+                    // Temperature Curve (Rose)
+                    graphCtx.strokeStyle = '#fb7185';
+                    graphCtx.lineWidth = 1.2;
+                    graphCtx.beginPath();
+                    for (let i = 0; i < curvePoints.length; i++) {
+                        const pt = curvePoints[i];
+                        const x = 2 + pt.strain * (w - 4);
+                        const y = h - 2 - pt.temp * (h - 4);
+                        if (i === 0) graphCtx.moveTo(x, y);
+                        else graphCtx.lineTo(x, y);
+                    }
+                    graphCtx.stroke();
+                }
+            }
+
+            // --- Touch & Mouse Interaction (Platen Drag, Specimen Laser Poke, 3D Orbit, Pinch Zoom) ---
+            const raycaster = new THREE.Raycaster();
+            const pointerNDC = new THREE.Vector2();
+            const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+            const planeHit = new THREE.Vector3();
+
+            function updateNDC(clientX, clientY) {
+                const rect = container.getBoundingClientRect();
+                pointerNDC.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+                pointerNDC.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+            }
+
+            function handlePointerStart(clientX, clientY) {
+                updateNDC(clientX, clientY);
+                raycaster.setFromCamera(pointerNDC, camera);
+
+                const hitPlaten = raycaster.intersectObject(pressHitBox, false);
+                if (hitPlaten.length > 0) {
+                    state.dragMode = 'platen';
+                    return;
+                }
+
+                // Direct Tap on Specimen -> Laser Hammer Impact!
+                if (!state.destroyed) {
+                    const hitSpec = raycaster.intersectObject(specimenMesh, false);
+                    if (hitSpec.length > 0) {
+                        const pt = hitSpec[0].point;
+                        const spec = SPECIMENS[state.specIndex];
+                        state.dentDepth = Math.min(0.18, state.dentDepth + 0.045);
+                        state.temperatureC = Math.min(980, state.temperatureC + 28);
+                        state.cameraShake = 0.07;
+                        emitParticleBurst(pt.y, spec.restRadius, 22, 0.9, 0x38bdf8);
+                        triggerLaserPulseSound();
+                        updateSpecimenGeometry(spec, state.totalStrain, Math.min(1, state.totalStrain / spec.fractureStrain));
+                        return;
+                    }
+                }
+
+                state.dragMode = 'camera';
+                state.lastPointerX = clientX;
+                state.lastPointerY = clientY;
+            }
+
+            function handlePointerMove(clientX, clientY) {
+                if (state.dragMode === 'platen') {
+                    updateNDC(clientX, clientY);
+                    raycaster.setFromCamera(pointerNDC, camera);
+                    dragPlane.normal.set(Math.sin(camOrbit.theta), 0, Math.cos(camOrbit.theta)).normalize();
+                    if (raycaster.ray.intersectPlane(dragPlane, planeHit)) {
+                        const prevY = state.platenY;
+                        const spec = SPECIMENS[state.specIndex];
+                        const topLimit = Math.max(MAX_PLATEN_Y, ANVIL_TOP_Y + spec.restHeight + 0.36);
+                        const targetY = Math.max(MIN_PLATEN_Y, Math.min(topLimit, planeHit.y - 0.15));
+                        state.platenY += (targetY - state.platenY) * 0.35;
+                        state.platenVy = (state.platenY - prevY) * 35;
+                    }
+                } else if (state.dragMode === 'camera') {
+                    const dx = clientX - state.lastPointerX;
+                    const dy = clientY - state.lastPointerY;
+                    state.lastPointerX = clientX;
+                    state.lastPointerY = clientY;
+
+                    camOrbit.targetTheta -= dx * 0.0075;
+                    camOrbit.targetPhi = Math.max(-0.35, Math.min(1.15, camOrbit.targetPhi + dy * 0.0075));
+                }
+            }
+
+            function handlePointerEnd() {
+                if (state.dragMode === 'platen') {
+                    state.platenVy = 0;
+                }
+                state.dragMode = 'none';
+            }
+
+            container.addEventListener('mousedown', (e) => handlePointerStart(e.clientX, e.clientY));
+            window.addEventListener('mousemove', (e) => handlePointerMove(e.clientX, e.clientY));
+            window.addEventListener('mouseup', handlePointerEnd);
+
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                camOrbit.targetRadius = Math.max(3.2, Math.min(11.0, camOrbit.targetRadius + e.deltaY * 0.004));
+            }, { passive: false });
+
+            container.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    handlePointerStart(e.touches[0].clientX, e.touches[0].clientY);
+                } else if (e.touches.length === 2) {
+                    state.dragMode = 'pinch';
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    state.pinchStartDist = Math.hypot(dx, dy);
+                    state.pinchStartZoom = camOrbit.targetRadius;
+                }
+            }, { passive: true });
+
+            window.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 1 && (state.dragMode === 'platen' || state.dragMode === 'camera')) {
+                    handlePointerMove(e.touches[0].clientX, e.touches[0].clientY);
+                } else if (e.touches.length === 2 && state.dragMode === 'pinch') {
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    const dist = Math.hypot(dx, dy);
+                    if (state.pinchStartDist > 10) {
+                        camOrbit.targetRadius = Math.max(3.2, Math.min(11.0, state.pinchStartZoom * (state.pinchStartDist / dist)));
+                    }
+                }
+            }, { passive: true });
+
+            window.addEventListener('touchend', handlePointerEnd);
+            window.addEventListener('touchcancel', handlePointerEnd);
+
+            // --- UI Buttons & Listeners ---
+            function startPressing(e) {
+                if (e) e.preventDefault();
+                state.isPressing = true;
+                state.isReleasing = false;
+                state.slamActive = false;
+            }
+            function stopPressing() {
+                state.isPressing = false;
+            }
+
+            btnPress.addEventListener('mousedown', startPressing);
+            btnPress.addEventListener('touchstart', startPressing, { passive: false });
+            window.addEventListener('mouseup', stopPressing);
+            window.addEventListener('touchend', stopPressing);
+
+            btnRelease.addEventListener('click', () => {
+                state.isPressing = false;
+                state.slamActive = false;
+                state.isReleasing = true;
+            });
+
+            btnSlam.addEventListener('click', () => {
+                state.isPressing = false;
+                state.isReleasing = false;
+                state.slamActive = true;
+                state.usedSlamThisAttempt = true;
+            });
+
+            btnSlowMo.addEventListener('click', () => {
+                state.manualSlowMo = !state.manualSlowMo;
+                btnSlowMo.classList.toggle('ring-1', state.manualSlowMo);
+                btnSlowMo.classList.toggle('ring-cyan-400', state.manualSlowMo);
+                btnSlowMo.classList.toggle('bg-cyan-800', state.manualSlowMo);
+            });
+
+            btnRespawn.addEventListener('click', () => spawnSpecimen(state.specIndex));
+            btnQuickNew.addEventListener('click', () => spawnSpecimen(state.specIndex));
+
+            // Game Mode Switcher (Sandbox vs Contracts)
+            modeSandboxBtn.addEventListener('click', () => {
+                state.gameMode = 'sandbox';
+                contractBar.classList.add('hidden');
+                modeSandboxBtn.className = 'px-2.5 py-1 rounded-lg bg-sky-500/30 text-sky-200 text-[9.5px] font-extrabold uppercase transition';
+                modeContractsBtn.className = 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-amber-200 text-[9.5px] font-extrabold uppercase transition flex items-center gap-1';
+                spawnSpecimen(state.specIndex);
+            });
+
+            modeContractsBtn.addEventListener('click', () => {
+                state.gameMode = 'contracts';
+                contractBar.classList.remove('hidden');
+                modeContractsBtn.className = 'px-2.5 py-1 rounded-lg bg-amber-500/30 text-amber-200 text-[9.5px] font-extrabold uppercase transition flex items-center gap-1';
+                modeSandboxBtn.className = 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-sky-200 text-[9.5px] font-extrabold uppercase transition';
+                loadContract(state.contractIdx);
+            });
+
+            btnSkipContract.addEventListener('click', () => loadContract(state.contractIdx + 1));
+
+            // Pump Sliders
+            speedSlider.addEventListener('input', (e) => {
+                state.pumpSpeedPct = parseInt(e.target.value, 10);
+                speedVal.textContent = `${state.pumpSpeedPct}%`;
+            });
+            limitSlider.addEventListener('input', (e) => {
+                state.maxLimitTons = parseInt(e.target.value, 10);
+                limitVal.textContent = `${state.maxLimitTons} ТОНН`;
+            });
+
+            // Collapsible Bottom Panel
+            btnCollapse.addEventListener('click', () => {
+                state.panelCollapsed = !state.panelCollapsed;
+                tabPanels.classList.toggle('hidden', state.panelCollapsed);
+                btnCollapse.textContent = state.panelCollapsed ? '▲' : '▼';
+            });
+
+            // Tab Switcher
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const panelMap = {
+                specimens: document.getElementById('panel-specimens'),
+                dies: document.getElementById('panel-dies'),
+                hydraulics: document.getElementById('panel-hydraulics'),
+                visual: document.getElementById('panel-visual')
+            };
+
+            tabButtons.forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const target = btn.getAttribute('data-tab');
+                    if (state.panelCollapsed) {
+                        state.panelCollapsed = false;
+                        tabPanels.classList.remove('hidden');
+                        btnCollapse.textContent = '▼';
+                    }
+                    tabButtons.forEach((b) => {
+                        b.className = b === btn
+                            ? 'tab-btn py-1 rounded-lg bg-amber-500/25 text-amber-300 text-[9px] sm:text-[9.5px] font-bold tracking-wider uppercase transition'
+                            : 'tab-btn py-1 rounded-lg text-slate-400 hover:text-slate-200 text-[9px] sm:text-[9.5px] font-bold tracking-wider uppercase transition';
+                    });
+                    Object.keys(panelMap).forEach((k) => {
+                        panelMap[k].classList.toggle('hidden', k !== target);
+                    });
+                });
+            });
+
+            // Specimen Selector Buttons
+            document.querySelectorAll('.spec-btn').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const idx = parseInt(btn.getAttribute('data-spec'), 10);
+                    spawnSpecimen(idx);
+                });
+            });
+
+            // Die Selector Buttons
+            document.querySelectorAll('.die-btn').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    setDieType(btn.getAttribute('data-die'));
+                });
+            });
+
+            // Visualization Mode Switcher
+            const visButtons = document.querySelectorAll('.vis-btn');
+            function applyVisualizationMode(mode) {
+                state.visMode = mode;
+                const spec = SPECIMENS[state.specIndex];
+
+                visButtons.forEach((b) => {
+                    const active = b.getAttribute('data-vis') === mode;
+                    b.className = active
+                        ? 'vis-btn py-2 px-2 rounded-lg bg-sky-500/25 border border-sky-400/50 text-[9.5px] font-bold tracking-wider text-sky-200 uppercase transition'
+                        : 'vis-btn py-2 px-2 rounded-lg bg-slate-900/80 border border-slate-700/70 text-[9.5px] font-bold tracking-wider text-slate-400 uppercase transition';
+                });
+
+                if (mode === 'studio') {
+                    specMaterial.color.setHex(spec.color);
+                    specMaterial.emissive.setHex(spec.emissive);
+                    specMaterial.emissiveIntensity = spec.emissiveInt;
+                    specMaterial.transmission = spec.transmission;
+                    specMaterial.opacity = 0.95;
+                    specMaterial.vertexColors = false;
+                    wireMat.opacity = 0.03;
+                    innerCoreMesh.material.opacity = 0.35;
+                } else if (mode === 'thermal') {
+                    specMaterial.color.setHex(0xffffff);
+                    specMaterial.emissive.setHex(0x000000);
+                    specMaterial.transmission = 0.05;
+                    specMaterial.opacity = 0.98;
+                    specMaterial.vertexColors = true;
+                    wireMat.opacity = 0.08;
+                    innerCoreMesh.material.opacity = 0.12;
+                } else if (mode === 'xray') {
+                    specMaterial.color.setHex(spec.color);
+                    specMaterial.emissive.setHex(spec.emissive);
+                    specMaterial.transmission = 0.75;
+                    specMaterial.opacity = 0.22;
+                    specMaterial.vertexColors = false;
+                    wireMat.opacity = 0.48;
+                    innerCoreMesh.material.opacity = 0.85;
+                }
+                specMaterial.needsUpdate = true;
+            }
+            visButtons.forEach((b) => {
+                b.addEventListener('click', () => applyVisualizationMode(b.getAttribute('data-vis')));
+            });
+
+            // 4 Camera Mode Presets
+            const camButtons = document.querySelectorAll('.cam-btn');
+            function setCameraPreset(mode) {
+                state.camMode = mode;
+                const aspect = container.clientWidth / Math.max(1, container.clientHeight);
+                const baseDist = aspect < 0.85 ? 8.4 : (aspect < 1.2 ? 6.9 : 6.1);
+
+                camButtons.forEach((b) => {
+                    const active = b.getAttribute('data-cam') === mode;
+                    b.className = active
+                        ? 'cam-btn px-2 py-1 rounded-lg bg-sky-500/30 text-sky-200 text-[9px] font-bold uppercase transition'
+                        : 'cam-btn px-2 py-1 rounded-lg text-slate-400 hover:text-slate-200 text-[9px] font-bold uppercase transition';
+                });
+
+                if (mode === 'orbit') {
+                    camOrbit.targetTheta = 0.44;
+                    camOrbit.targetPhi = 0.16;
+                    camOrbit.targetRadius = baseDist;
+                    camOrbit.targetLookY = -0.22;
+                } else if (mode === 'macro') {
+                    camOrbit.targetTheta = 0.34;
+                    camOrbit.targetPhi = 0.12;
+                    camOrbit.targetRadius = baseDist * 0.54;
+                    camOrbit.targetLookY = -0.68;
+                } else if (mode === 'side') {
+                    camOrbit.targetTheta = 0.0;
+                    camOrbit.targetPhi = 0.02;
+                    camOrbit.targetRadius = baseDist * 0.94;
+                    camOrbit.targetLookY = -0.34;
+                } else if (mode === 'top') {
+                    camOrbit.targetTheta = 0.02;
+                    camOrbit.targetPhi = 1.08;
+                    camOrbit.targetRadius = baseDist * 0.92;
+                    camOrbit.targetLookY = -0.45;
+                }
+            }
+            camButtons.forEach((b) => {
+                b.addEventListener('click', () => setCameraPreset(b.getAttribute('data-cam')));
+            });
+
+            // --- Resize & 60fps Animation Loop ---
+            function handleResize() {
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+                if (width === 0 || height === 0) return;
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+            }
+            window.addEventListener('resize', handleResize);
+
+            let lastTimestamp = performance.now();
+
+            function animate(now) {
+                requestAnimationFrame(animate);
+
+                const rawDt = Math.min(0.04, (now - lastTimestamp) / 1000);
+                lastTimestamp = now;
+                state.time += rawDt;
+
+                stepPhysics(rawDt);
+                updateUI();
+
+                // Camera Orbit + Auto Slow-Mo Zoom + Impact Shake
+                const slowZoomOffset = state.autoSlowMoTimer > 0 ? -1.1 : 0;
+                camOrbit.theta += (camOrbit.targetTheta - camOrbit.theta) * 0.14;
+                camOrbit.phi += (camOrbit.targetPhi - camOrbit.phi) * 0.14;
+                camOrbit.radius += ((camOrbit.targetRadius + slowZoomOffset) - camOrbit.radius) * 0.14;
+                camOrbit.lookY += (camOrbit.targetLookY - camOrbit.lookY) * 0.14;
+
+                state.cameraShake *= Math.exp(-10 * rawDt);
+                const shakeX = (Math.random() - 0.5) * state.cameraShake;
+                const shakeY = (Math.random() - 0.5) * state.cameraShake;
+
+                camera.position.x = camOrbit.radius * Math.sin(camOrbit.theta) * Math.cos(camOrbit.phi) + shakeX;
+                camera.position.y = camOrbit.lookY + camOrbit.radius * Math.sin(camOrbit.phi) + shakeY;
+                camera.position.z = camOrbit.radius * Math.cos(camOrbit.theta) * Math.cos(camOrbit.phi);
+                camera.lookAt(0, camOrbit.lookY, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.onload = function () {
+                handleResize();
+                setDieType('flat');
+                spawnSpecimen(0);
+                setCameraPreset('orbit');
+                camOrbit.theta = camOrbit.targetTheta;
+                camOrbit.phi = camOrbit.targetPhi;
+                camOrbit.radius = camOrbit.targetRadius;
+                camOrbit.lookY = camOrbit.targetLookY;
+                lastTimestamp = performance.now();
+                requestAnimationFrame(animate);
+            };
+        })();
+    </script>
+</body>
+</html>
+```
